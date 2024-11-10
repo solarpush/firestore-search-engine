@@ -31,19 +31,30 @@ import Indexes from "./Indexes";
 Then, create an instance of the FirestoreSearchEngine:
 
 ```javascript
-const searchEngine = new FirestoreSearchEngine();
+const searchEngine = new FirestoreSearchEngine(firestore(), {
+  collection: "YourCollectionName", //not change collection after indexing or re-indexe all
+});
 ```
 
-After that, create a Search instance by providing it with the searchEngine, index and the term you want to search for:
+After that, call a searchEngine.indexes for index your document:
 
 ```javascript
-const search = new Search(searchEngine, Indexes.name, "John");
+await searchEngine.indexes({
+  inputField: inputField,
+  returnedFields: {
+    indexedDocumentPath:
+      "/company/TsqUbTpKgdeUXrclUUIrGaDWLeZ9/submissions/50366", //required field for index only 1 time each document
+    name: "ExistingNameKeyInMyDocument", //optional fields you can add the key who you need to be returned in the search result
+  },
+});
 ```
 
 Finally, execute the search operation:
 
 ```javascript
-const results = await search.execute();
+const results = await searchEngine.search({
+  fieldValue: inputField,
+}); //That will return all document information who are saved in dexed values
 ```
 
 The results object will hold the documents that matched your search term.
@@ -55,16 +66,14 @@ Below is a complete usage example of the Firestore Search Engine Package:
 ```javascript
 // index.ts
 import FirestoreSearchEngine from "./FirestoreSearchEngine";
-import Search from "./Search";
-import Indexes from "./Indexes";
-
-(async function () {
-  const searchEngine = new FirestoreSearchEngine();
-  const search = new Search(searchEngine, Indexes.name, "John");
-  const results = await search.execute();
-
-  console.log(results); // prints search results
-})();
+app.post("/YourSearchEndPoint", async (request, response) => {
+  const { inputField } = JSON.parse(request.body);
+  const result = await searchEngine.search({
+    fieldValue: inputField,
+  });
+  response.json(result);
+  return;
+});
 ```
 
 ## Why Firestore Search Engine?
