@@ -1,0 +1,38 @@
+{
+  "name": "firestore-search-engine",
+  "version": "1.0.2",
+  "description": "Firestore Search Engine is a powerful helper library for enhancing search functionality in Firestore. Designed to handle misspellings, prefixes, and phonetic matching, this package generates multiple search variations for optimized approximate search results within Firestore.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "firestore",
+    "search",
+    "engine",
+    "typo-tolerance",
+    "fuzzy-search",
+    "phonetic-search",
+    "prefix-search",
+    "firestore-search",
+    "search-engine",
+    "text-matching",
+    "text-search",
+    "firebase",
+    "approximate-search",
+    "typo-handling",
+    "autocomplete",
+    "typescript",
+    "firestore-query",
+    "data-indexing"
+  ],
+  "author": "LPDJS (Pierre Nicolas)",
+  "license": "ISC",
+  "devDependencies": {
+    "@google-cloud/firestore": "^7.10.0",
+    "@types/node": "^22.9.0",
+    "typescript": "^5.6.3"
+  }
+}
