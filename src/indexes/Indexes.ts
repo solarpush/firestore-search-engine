@@ -76,7 +76,6 @@ export class Indexes {
       .where("indexedDocumentPath", "==", indexedDocumentPath)
       .get();
     if (query.empty) return;
-
     for (let j = 0; j < query.docs.length; j++) {
       bulk.delete(query.docs[j].ref);
       if (j % 500 === 0) await bulk.flush();

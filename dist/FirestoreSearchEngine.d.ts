@@ -1,4 +1,5 @@
 import type { Firestore } from "@google-cloud/firestore";
+import type { Application, Request, Response } from "express";
 import { FirestoreSearchEngineConfig, FirestoreSearchEngineIndexesProps, FirestoreSearchEngineReturnType, FirestoreSearchEngineSearchProps } from ".";
 /**
  * Configures the Firestore instance and throws an error if a necessary
@@ -57,4 +58,6 @@ export declare class FirestoreSearchEngine {
      * For more information and usage examples, refer to the Firestore Search Engine [documentation](https://github.com/solarpush/firestore-search-engine).
      */
     indexes(props: FirestoreSearchEngineIndexesProps): Promise<void>;
+    expressWrapper(app: Application, path?: string): Promise<void>;
+    onRequestWrapper(): (request: Request, response: Response<any>) => void | Promise<void>;
 }

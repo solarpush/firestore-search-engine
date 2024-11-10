@@ -1,4 +1,5 @@
 import type { Firestore } from "@google-cloud/firestore";
+import type { Application, Request, Response } from "express";
 import {
   FirestoreSearchEngineConfig,
   FirestoreSearchEngineIndexesProps,
@@ -95,6 +96,44 @@ export class FirestoreSearchEngine {
       props
     ).execute();
   }
+  async expressWrapper(app: Application, path: string = "/search:searchValue") {
+    if (!path || !path.startsWith("/"))
+      throw new Error("Path must be in the format '/search'");
+    app.get(
+      `${path}:searchValue`,
+      async (request: Request, response: Response) => {
+        const { searchValue } = request.params;
+        if (!searchValue || !searchValue.length || searchValue.length < 3) {
+          response.json([]);
+          return;
+        }
+        const result = await this.search({
+          fieldValue: searchValue,
+        });
+        response.json(result);
+        return;
+      }
+    );
+  }
+  onRequestWrapper(): (
+    request: Request,
+    response: Response<any>
+  ) => void | Promise<void> {
+    return async (req, res) => {
+      const searchValue = req.query.searchValue;
+      if (
+        !searchValue ||
+        typeof searchValue !== "string" ||
+        searchValue.length < 3
+      ) {
+        res.json([]);
+        return;
+      }
+      const result = await this.search({
+        fieldValue: searchValue,
+      });
+      res.json(result);
+      return;
+    };
+  }
 }
-
-// new FirestoreSearchEngine

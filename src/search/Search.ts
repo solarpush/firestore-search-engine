@@ -49,10 +49,12 @@ export class Search {
         };
       const { search_keywords, ...rest } = data;
       const uniqueId = data.indexedDocumentPath;
-      const isCloseEnough = search_keywords.some((keyword) =>
-        fieldValue
-          .split(" ")
-          .some((word) => fse_levenshteinDistance(word, keyword) <= 2)
+      const isCloseEnough = search_keywords.some(
+        (keyword) =>
+          fieldValue
+            .split(" ")
+            .some((word) => fse_levenshteinDistance(word, keyword) <= 2) &&
+          fse_levenshteinDistance(fieldValue, keyword) <= 3
       );
 
       if (isCloseEnough && !uniqueDocs.has(uniqueId)) {

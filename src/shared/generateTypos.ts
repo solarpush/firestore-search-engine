@@ -18,7 +18,8 @@ export function fse_generateTypos(
   if (input.length > maxLength) throw new Error("Input up to 50 Char");
 
   const typos = new Set<string>();
-  const segmentSizes = [4, 5, 6];
+
+  const segmentSizes = input.length > 4 ? [4, 5, 6] : [3, 4];
 
   // Définition des voisins du clavier AZERTY
   const keyboardNeighbors: { [key: string]: string[] } = {

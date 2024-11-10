@@ -80,33 +80,28 @@ The results object will hold the documents that matched your search term.
 
 Below is a complete usage example of the Firestore Search Engine Package:
 
+### express wrapper
+
 ```javascript
 // index.ts
-// express
+import { FirestoreSearchEngine } from "firestore-search-engine";
+const app = express();
+searchEngine.expressWrapper(app); //add optional second parmateters to change the default path "/search" to your custom path
+//url :`yourBaseUrl/search/${inputValue}`
+//method :GET
+```
+
+### onRequest wrapper
+
+```javascript
 import { FirestoreSearchEngine } from "firestore-search-engine";
 
-app.post("/YourSearchEndPoint", async (request, response) => {
-  const { inputField } = JSON.parse(request.body);
-  //provide an endpoint for your search operation
-  const result = await searchEngineUserName.search({
-    fieldValue: inputField,
-  });
-  response.json(result);
-  return;
-});
-
-// onRequest
-import { FirestoreSearchEngine } from "firestore-search-engine";
-
-export const searchUserName = onRequest(async (request, response) => {
-  const { inputField } = JSON.parse(request.body);
-  //provide an endpoint for your search operation
-  const result = await searchEngineUserName.search({
-    fieldValue: inputField,
-  });
-  response.json(result);
-  return;
-});
+export const searchUserName = onRequest(
+  { region: "europe-west3" },
+  searchEngineUserName.onRequestWrapper()
+);
+//url :`yourBaseUrl/functionName/search?searchValue=${inputValue}`
+//method :GET
 ```
 
 ## Why Firestore Search Engine?
