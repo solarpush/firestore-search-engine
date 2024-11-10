@@ -24,7 +24,11 @@ export class Search {
     private readonly firestoreInstance: Firestore,
     private readonly config: FirestoreSearchEngineConfig,
     private readonly props: FirestoreSearchEngineSearchProps
-  ) {}
+  ) {
+    if (!props.limit) {
+      this.props.limit = 20;
+    }
+  }
   async execute() {
     return await this.search(this.props.fieldValue);
   }
@@ -40,7 +44,10 @@ export class Search {
       return [];
     }
     const uniqueDocs = new Set<string>();
-    const results = [];
+    const results: {
+      doc: FirestoreSearchEngineReturnType[0];
+      relevance: number;
+    }[] = [];
 
     for (const doc of querySnapshot.docs) {
       const data =
@@ -49,19 +56,31 @@ export class Search {
         };
       const { search_keywords, ...rest } = data;
       const uniqueId = data.indexedDocumentPath;
-      const isCloseEnough = search_keywords.some(
-        (keyword) =>
-          fieldValue
-            .split(" ")
-            .some((word) => fse_levenshteinDistance(word, keyword) <= 2) &&
-          fse_levenshteinDistance(fieldValue, keyword) <= 3
-      );
+      search_keywords.forEach((keyword) => {
+        const words = fieldValue.split(" ");
+        let isCloseEnough = false;
+        let closeRelevance: number = 0;
 
-      if (isCloseEnough && !uniqueDocs.has(uniqueId)) {
-        uniqueDocs.add(uniqueId);
-        results.push(rest);
-      }
+        let distanceTotal: number = 0;
+
+        for (const word of words) {
+          const distance = fse_levenshteinDistance(word, keyword);
+          if (distance <= 2) {
+            isCloseEnough = true;
+            closeRelevance = Math.min(distance, closeRelevance || Infinity);
+          }
+          distanceTotal += distance;
+        }
+        console.log(distanceTotal, isCloseEnough, fieldValue, words);
+        if (isCloseEnough && distanceTotal <= 6 && !uniqueDocs.has(uniqueId)) {
+          uniqueDocs.add(uniqueId);
+          results.push({ doc: rest, relevance: closeRelevance });
+        }
+      });
     }
-    return results;
+    results.sort((a, b) => a.relevance - b.relevance);
+
+    const topResults = results.slice(0, this.props.limit);
+    return topResults.map((result) => result.doc);
   }
 }

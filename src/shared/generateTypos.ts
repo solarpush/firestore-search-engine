@@ -49,7 +49,6 @@ export function fse_generateTypos(
   for (const size of segmentSizes) {
     for (let start = 0; start <= input.length - size; start++) {
       const segment = input.slice(start, start + size);
-
       // Applique les modifications à la première lettre du segment
       if (segment.length >= 3) {
         const firstLetter = segment[0];
@@ -57,18 +56,18 @@ export function fse_generateTypos(
           // Substitution de la première lettre avec les voisins du clavier
           keyboardNeighbors[firstLetter].forEach((neighbor) => {
             const typo = neighbor + segment.slice(1);
-            typos.add(typo);
+            typos.add(typo.trim());
           });
         }
 
         // Insertion avant la première lettre avec chaque voisin possible
         keyboardNeighbors[firstLetter]?.forEach((neighbor) => {
           const typo = neighbor + segment;
-          typos.add(typo);
+          typos.add(typo.trim());
         });
 
         // Suppression de la première lettre
-        typos.add(segment.slice(1));
+        typos.add(segment.slice(1).trim());
       }
 
       // Applique les modifications à la dernière lettre du segment
@@ -77,17 +76,17 @@ export function fse_generateTypos(
         // Substitution de la dernière lettre avec les voisins du clavier
         keyboardNeighbors[lastLetter].forEach((neighbor) => {
           const typo = segment.slice(0, -1) + neighbor;
-          typos.add(typo);
+          typos.add(typo.trim());
         });
 
         // Insertion après la dernière lettre avec chaque voisin possible
         keyboardNeighbors[lastLetter]?.forEach((neighbor) => {
           const typo = segment + neighbor;
-          typos.add(typo);
+          typos.add(typo.trim());
         });
 
         // Suppression de la dernière lettre
-        typos.add(segment.slice(0, -1));
+        typos.add(segment.slice(0, -1).trim());
       }
     }
   }

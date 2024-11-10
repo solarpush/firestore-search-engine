@@ -2,6 +2,10 @@
 
 This is a powerful and flexible search engine server for Firestore. This package allows developers to quickly and efficiently add search capability to their Firestore-based applications.
 
+It's Node.js package, so you can use it in your Cloud Functions or any other Node.js environment. It's also compatible with TypeScript.
+
+**This package is not intended for front-end usage!**
+
 Firestore Search Engine Package
 This is a powerful and flexible search engine server for Firestore. This package allows developers to quickly and efficiently add search capability to their Firestore-based applications.
 
@@ -9,8 +13,7 @@ This is a powerful and flexible search engine server for Firestore. This package
 
 - Out-of-the-box Firestore configuration support
 - Full-text searching of Firestore documents
-- Search by document title
-- Pagination capabilities
+- Search by any keypath in the document
 
 ## Installation
 

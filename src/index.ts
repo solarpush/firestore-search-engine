@@ -24,6 +24,7 @@ export type FirestoreSearchEngineSearchProps = {
    * The field value.
    */
   fieldValue: string;
+  limit?: number;
 };
 
 /**

@@ -58,6 +58,6 @@ export declare class FirestoreSearchEngine {
      * For more information and usage examples, refer to the Firestore Search Engine [documentation](https://github.com/solarpush/firestore-search-engine).
      */
     indexes(props: FirestoreSearchEngineIndexesProps): Promise<void>;
-    expressWrapper(app: Application, path?: string): Promise<void>;
+    expressWrapper(app: Application, path?: string): Promise<Application>;
     onRequestWrapper(): (request: Request, response: Response<any>) => void | Promise<void>;
 }

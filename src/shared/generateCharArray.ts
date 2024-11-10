@@ -14,20 +14,20 @@ export function fse_generateCharArray(
   startIndex: number = 3,
   maxLength: number = 8
 ): string[] {
-  const fragments: string[] = [];
-  const words = input.split(" ");
+  const fragments: Set<string> = new Set();
+  const words = input.trim().split(" ");
 
   words.forEach((word) => {
     for (let i = 1; i <= Math.min(word.trim().length, maxLength); i++) {
       if (i <= startIndex) continue;
-      fragments.push(word.trim().substring(0, i).toLowerCase());
+      fragments.add(word.trim().substring(0, i).toLowerCase());
     }
   });
 
-  for (let i = 1; i <= Math.min(input.length, maxLength); i++) {
+  for (let i = 1; i <= Math.min(input.trim().length, maxLength); i++) {
     if (i <= startIndex) continue;
-    fragments.push(input.substring(0, i).toLowerCase());
+    fragments.add(input.trim().substring(0, i).toLowerCase());
   }
-
-  return fragments;
+  console.log(fragments);
+  return Array.from(fragments);
 }

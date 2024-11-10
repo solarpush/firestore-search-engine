@@ -96,11 +96,11 @@ export class FirestoreSearchEngine {
       props
     ).execute();
   }
-  async expressWrapper(app: Application, path: string = "/search:searchValue") {
+  async expressWrapper(app: Application, path: string = "/search") {
     if (!path || !path.startsWith("/"))
       throw new Error("Path must be in the format '/search'");
     app.get(
-      `${path}:searchValue`,
+      `${path}/:searchValue`,
       async (request: Request, response: Response) => {
         const { searchValue } = request.params;
         if (!searchValue || !searchValue.length || searchValue.length < 3) {
@@ -114,6 +114,7 @@ export class FirestoreSearchEngine {
         return;
       }
     );
+    return app;
   }
   onRequestWrapper(): (
     request: Request,
