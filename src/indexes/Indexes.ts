@@ -1,4 +1,4 @@
-import { BulkWriter, Firestore } from "@google-cloud/firestore";
+import type { BulkWriter, Firestore } from "@google-cloud/firestore";
 
 import {
   FirestoreSearchEngineConfig,
@@ -22,17 +22,27 @@ import { fse_generateTypos } from "../shared/generateTypos";
  */
 
 export class Indexes {
+  wordMinLength: number;
+  wordMaxLength: number;
   constructor(
     private readonly firestoreInstance: Firestore,
     private readonly config: FirestoreSearchEngineConfig,
     private readonly props: FirestoreSearchEngineIndexesProps
-  ) {}
+  ) {
+    if (!props.wordMaxLength) {
+      this.wordMaxLength = 50;
+    } else {
+      this.wordMaxLength = props.wordMaxLength;
+    }
+    if (!props.wordMinLength) {
+      this.wordMinLength = 3;
+    } else {
+      this.wordMinLength = props.wordMinLength;
+    }
+  }
 
   async execute() {
-    const typos = fse_generateTypos(
-      this.props.inputField,
-      this.props.wordMaxLength
-    );
+    const typos = fse_generateTypos(this.props.inputField, this.wordMaxLength);
     return await this.saveWithLimitedKeywords(
       this.props.returnedFields,
       Array.from(typos)

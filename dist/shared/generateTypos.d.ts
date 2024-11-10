@@ -11,4 +11,4 @@
  *
  * @throws {Error} If the length of the input string exceeds maxLength.
  */
-export declare function fse_generateTypos(input: string, maxLength?: number): Set<string>;
+export declare function fse_generateTypos(input: string, maxLength: number): Set<string>;

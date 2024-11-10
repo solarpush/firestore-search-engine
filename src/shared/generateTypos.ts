@@ -13,7 +13,7 @@
  */
 export function fse_generateTypos(
   input: string,
-  maxLength: number = 30
+  maxLength: number
 ): Set<string> {
   if (input.length > maxLength) throw new Error("Input up to 50 Char");
 

@@ -1,6 +1,9 @@
 import type { Firestore } from "@google-cloud/firestore";
 import type { Application, Request, Response } from "express";
-import { FirestoreSearchEngineConfig, FirestoreSearchEngineIndexesProps, FirestoreSearchEngineReturnType, FirestoreSearchEngineSearchProps } from ".";
+import { CallableRequest } from "firebase-functions/https";
+import { EventHandlerOptions } from "firebase-functions/options";
+import type { onDocumentCreated, onDocumentDeleted, onDocumentUpdated } from "firebase-functions/v2/firestore";
+import type { FirestoreSearchEngineConfig, FirestoreSearchEngineIndexesProps, FirestoreSearchEngineReturnType, FirestoreSearchEngineSearchProps, PathWithSubCollectionsMaxDepth4 } from ".";
 /**
  * Configures the Firestore instance and throws an error if a necessary
  * condition (collection name being a non-empty string) is not satisfied.
@@ -59,5 +62,39 @@ export declare class FirestoreSearchEngine {
      */
     indexes(props: FirestoreSearchEngineIndexesProps): Promise<void>;
     expressWrapper(app: Application, path?: string): Promise<Application>;
-    onRequestWrapper(): (request: Request, response: Response<any>) => void | Promise<void>;
+    onRequestWrapped(): (request: Request, response: Response<any>) => void | Promise<void>;
+    onCallWrapped(authCallBack: (auth: CallableRequest["auth"]) => Promise<boolean> | boolean): (data: CallableRequest) => Promise<FirestoreSearchEngineReturnType>;
+    onDocumentWriteWrapper(onDocumentWrittenCallBack: typeof onDocumentCreated, documentProps: {
+        indexedKey: string;
+        returnedKey: string[];
+    }, documentsPath: PathWithSubCollectionsMaxDepth4, props?: Pick<FirestoreSearchEngineIndexesProps, "wordMaxLength" | "wordMinLength">, eventHandlerOptions?: EventHandlerOptions): import("firebase-functions/core").CloudFunction<import("firebase-functions/firestore").FirestoreEvent<import("firebase-functions/firestore").QueryDocumentSnapshot | undefined, {
+        [x: string]: string;
+    } | {
+        [x: string]: string;
+    } | {
+        [x: string]: string;
+    } | {
+        [x: string]: string;
+    }>>;
+    onDocumentUpdateWrapper(instanceOfOnDocumentUpdated: typeof onDocumentUpdated, documentProps: {
+        indexedKey: string;
+        returnedKey: string[];
+    }, documentsPath: PathWithSubCollectionsMaxDepth4, props?: Pick<FirestoreSearchEngineIndexesProps, "wordMaxLength" | "wordMinLength">, eventHandlerOptions?: EventHandlerOptions): import("firebase-functions/core").CloudFunction<import("firebase-functions/firestore").FirestoreEvent<import("firebase-functions/firestore").Change<import("firebase-functions/firestore").QueryDocumentSnapshot> | undefined, {
+        [x: string]: string;
+    } | {
+        [x: string]: string;
+    } | {
+        [x: string]: string;
+    } | {
+        [x: string]: string;
+    }>>;
+    onDocumentDeletedWrapper(instanceOfOnDocumentDeleted: typeof onDocumentDeleted, documentsPath: PathWithSubCollectionsMaxDepth4, eventHandlerOptions?: EventHandlerOptions): import("firebase-functions/core").CloudFunction<import("firebase-functions/firestore").FirestoreEvent<import("firebase-functions/firestore").QueryDocumentSnapshot | undefined, {
+        [x: string]: string;
+    } | {
+        [x: string]: string;
+    } | {
+        [x: string]: string;
+    } | {
+        [x: string]: string;
+    }>>;
 }

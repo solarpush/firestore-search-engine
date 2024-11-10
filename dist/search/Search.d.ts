@@ -1,4 +1,4 @@
-import { Firestore } from "@google-cloud/firestore";
+import type { Firestore } from "@google-cloud/firestore";
 import { FirestoreSearchEngineConfig, FirestoreSearchEngineReturnType, FirestoreSearchEngineSearchProps } from "..";
 /**
  * A Search class that interacts with Google Cloud Firestore API for operations like read, write and update

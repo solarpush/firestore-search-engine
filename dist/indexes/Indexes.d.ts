@@ -1,4 +1,4 @@
-import { BulkWriter, Firestore } from "@google-cloud/firestore";
+import type { BulkWriter, Firestore } from "@google-cloud/firestore";
 import { FirestoreSearchEngineConfig, FirestoreSearchEngineIndexesProps } from "..";
 /**
  * The `BulkWriter` and `Firestore` objects are imported from the
@@ -19,6 +19,8 @@ export declare class Indexes {
     private readonly firestoreInstance;
     private readonly config;
     private readonly props;
+    wordMinLength: number;
+    wordMaxLength: number;
     constructor(firestoreInstance: Firestore, config: FirestoreSearchEngineConfig, props: FirestoreSearchEngineIndexesProps);
     execute(): Promise<void>;
     protected saveWithLimitedKeywords(returnedFields: FirestoreSearchEngineIndexesProps["returnedFields"], keywords: string[]): Promise<void>;

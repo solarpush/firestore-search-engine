@@ -15,5 +15,11 @@ export default {
       sourcemap: true,
     },
   ],
+  external: [
+    "@google-cloud/firestore",
+    "@types/express",
+    "@types/node",
+    "firebase-functions",
+  ],
   plugins: [typescript(), terser()],
 };

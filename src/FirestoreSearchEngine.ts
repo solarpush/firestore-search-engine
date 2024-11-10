@@ -1,13 +1,22 @@
 import type { Firestore } from "@google-cloud/firestore";
 import type { Application, Request, Response } from "express";
-import {
+import { CallableRequest, HttpsError } from "firebase-functions/https";
+import { EventHandlerOptions } from "firebase-functions/options";
+import type {
+  onDocumentCreated,
+  onDocumentDeleted,
+  onDocumentUpdated,
+} from "firebase-functions/v2/firestore";
+import type {
   FirestoreSearchEngineConfig,
   FirestoreSearchEngineIndexesProps,
   FirestoreSearchEngineReturnType,
   FirestoreSearchEngineSearchProps,
+  PathWithSubCollectionsMaxDepth4,
 } from ".";
 import { Indexes } from "./indexes/Indexes";
 import { Search } from "./search/Search";
+import { getDiffFromUpdatedData } from "./shared/getDiffFromDocumentUpdate";
 /**
  * Configures the Firestore instance and throws an error if a necessary
  * condition (collection name being a non-empty string) is not satisfied.
@@ -116,7 +125,7 @@ export class FirestoreSearchEngine {
     );
     return app;
   }
-  onRequestWrapper(): (
+  onRequestWrapped(): (
     request: Request,
     response: Response<any>
   ) => void | Promise<void> {
@@ -136,5 +145,150 @@ export class FirestoreSearchEngine {
       res.json(result);
       return;
     };
+  }
+  onCallWrapped(
+    authCallBack: (auth: CallableRequest["auth"]) => Promise<boolean> | boolean
+  ): (data: CallableRequest) => Promise<FirestoreSearchEngineReturnType> {
+    return async ({ data, auth }) => {
+      if (authCallBack) {
+        const isAuthorized = await authCallBack(auth);
+        if (!isAuthorized)
+          throw new HttpsError("unauthenticated", "Unauthorized");
+      }
+      const searchValue = data.searchValue;
+      if (
+        !searchValue ||
+        typeof searchValue !== "string" ||
+        searchValue.length < 3
+      ) {
+        return [];
+      }
+      const result = await this.search({
+        fieldValue: searchValue,
+      });
+      return result;
+    };
+  }
+  onDocumentWriteWrapper(
+    onDocumentWrittenCallBack: typeof onDocumentCreated,
+    documentProps: { indexedKey: string; returnedKey: string[] },
+    documentsPath: PathWithSubCollectionsMaxDepth4,
+    props: Pick<
+      FirestoreSearchEngineIndexesProps,
+      "wordMaxLength" | "wordMinLength"
+    > = {},
+    eventHandlerOptions: EventHandlerOptions = {}
+  ) {
+    return onDocumentWrittenCallBack(
+      { ...eventHandlerOptions, document: documentsPath },
+      async (event) => {
+        const data = event.data?.data();
+        if (!event.data || !data) return;
+
+        const updatedFieldValue = data[documentProps.indexedKey];
+        const returnedFields: Record<string, any> = {};
+        for (const key of documentProps.returnedKey) {
+          if (data[key] || data[key] === 0) {
+            returnedFields[key] = data[key];
+          }
+        }
+        if (
+          updatedFieldValue &&
+          typeof updatedFieldValue === "string" &&
+          updatedFieldValue.length > (props.wordMinLength ?? 3)
+        ) {
+          try {
+            await this.indexes({
+              ...props,
+              inputField: updatedFieldValue,
+              returnedFields: {
+                indexedDocumentPath: event.data.ref.path,
+                ...returnedFields,
+              },
+            });
+          } catch (error) {
+            return;
+          }
+        }
+        return;
+      }
+    );
+  }
+  onDocumentUpdateWrapper(
+    instanceOfOnDocumentUpdated: typeof onDocumentUpdated,
+    documentProps: { indexedKey: string; returnedKey: string[] },
+    documentsPath: PathWithSubCollectionsMaxDepth4,
+    props: Pick<
+      FirestoreSearchEngineIndexesProps,
+      "wordMaxLength" | "wordMinLength"
+    > = {},
+    eventHandlerOptions: EventHandlerOptions = {}
+  ) {
+    return instanceOfOnDocumentUpdated(
+      { ...eventHandlerOptions, document: documentsPath },
+      async (event) => {
+        if (!event.data) return;
+        const { changes, after } = getDiffFromUpdatedData<{
+          [key: string]: any;
+        }>(event.data);
+        const updatedFieldValue = changes[documentProps.indexedKey];
+        const returnedFields: Record<string, any> = {};
+        for (const key of documentProps.returnedKey) {
+          if (after[key] || after[key] === 0) {
+            returnedFields[key] = after[key];
+          }
+        }
+        if (
+          updatedFieldValue &&
+          typeof updatedFieldValue === "string" &&
+          updatedFieldValue.length > (props.wordMinLength ?? 3)
+        ) {
+          try {
+            await this.indexes({
+              ...props,
+              inputField: updatedFieldValue,
+              returnedFields: {
+                indexedDocumentPath: event.data.after.ref.path,
+                ...returnedFields,
+              },
+            });
+          } catch (error) {
+            return;
+          }
+        }
+        return;
+      }
+    );
+  }
+  onDocumentDeletedWrapper(
+    instanceOfOnDocumentDeleted: typeof onDocumentDeleted,
+    documentsPath: PathWithSubCollectionsMaxDepth4,
+    eventHandlerOptions: EventHandlerOptions = {}
+  ) {
+    return instanceOfOnDocumentDeleted(
+      { ...eventHandlerOptions, document: documentsPath },
+      async (event) => {
+        const data = event.data?.data();
+        if (!event.data || !data) return;
+        try {
+          const bulk = this.firestoreInstance.bulkWriter();
+          const indexedDocumentPath = event.data.ref.path;
+          const querySnap = await this.firestoreInstance
+            .collection(this.config.collection)
+            .where("indexedDocumentPath", "==", indexedDocumentPath)
+            .get();
+          for (let index = 0; index < querySnap.docs.length; index++) {
+            const doc = querySnap.docs[index];
+            bulk.delete(doc.ref);
+            if (index % 500 === 0) await bulk.flush();
+          }
+          await bulk.close();
+        } catch (error) {
+          return;
+        }
+
+        return;
+      }
+    );
   }
 }

@@ -8,8 +8,9 @@
   "types": "dist/index.d.ts",
   "homepage": "https://github.com/solarpush/firestore-search-engine",
   "scripts": {
-    "build": "tsc",
-    "rolup": "rollup --config rollup.config.js",
+    "build:tsc": "tsc",
+    "clean": "rimraf dist",
+    "build": "pnpm clean && rollup --config rollup.config.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -34,13 +35,16 @@
   ],
   "author": "LPDJS (Pierre Nicolas)",
   "license": "ISC",
+  "dependencies": {
+    "@google-cloud/firestore": "^7.10.0"
+  },
   "devDependencies": {
-    "@google-cloud/firestore": "^7.10.0",
-    "@google-cloud/functions-framework": "^3.4.2",
     "@rollup/plugin-terser": "^0.4.4",
     "@rollup/plugin-typescript": "^12.1.1",
     "@types/express": "^5.0.0",
     "@types/node": "^22.9.0",
+    "firebase-functions": "^6.1.0",
+    "rimraf": "^6.0.1",
     "rollup": "^4.25.0",
     "tslib": "^2.8.1",
     "typescript": "^5.6.3"
