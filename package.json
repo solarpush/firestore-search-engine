@@ -1,11 +1,15 @@
 {
   "name": "firestore-search-engine",
-  "version": "1.0.2",
+  "version": "1.0.21",
+  "type": "module",
   "description": "Firestore Search Engine is a powerful helper library for enhancing search functionality in Firestore. Designed to handle misspellings, prefixes, and phonetic matching, this package generates multiple search variations for optimized approximate search results within Firestore.",
-  "main": "dist/index.js",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
+  "homepage": "https://github.com/solarpush/firestore-search-engine",
   "scripts": {
     "build": "tsc",
+    "rolup": "rollup --config rollup.config.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -32,7 +36,13 @@
   "license": "ISC",
   "devDependencies": {
     "@google-cloud/firestore": "^7.10.0",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^12.1.1",
     "@types/node": "^22.9.0",
+    "rollup": "^4.25.0",
     "typescript": "^5.6.3"
+  },
+  "dependencies": {
+    "tslib": "^2.8.1"
   }
 }

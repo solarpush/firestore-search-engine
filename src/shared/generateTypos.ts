@@ -1,105 +1,20 @@
-// import { generateCharArray } from "./generateCharArray";
-
-// export function generateTypos(input: string, maxLength = 30): Set<string> {
-//   if (input.length > maxLength) throw new Error("Input up to 50 Char");
-//   const typos = new Set<string>();
-//   const charArray = generateCharArray(input);
-//   for (const char of charArray) {
-//     if (char.length < 3) continue;
-//     if (char.length > 5) continue;
-//     // Substitution
-//     for (let i = 0; i < char.length; i++) {
-//       for (let j = 97; j <= 122; j++) {
-//         // ASCII de 'a' à 'z'
-//         const typo =
-//           char.slice(0, i) + String.fromCharCode(j) + char.slice(i + 1);
-//         typos.add(typo);
-//       }
-//     }
-
-//     // Insertion
-//     for (let i = 0; i <= char.length; i++) {
-//       for (let j = 97; j <= 122; j++) {
-//         const typo = char.slice(0, i) + String.fromCharCode(j) + char.slice(i);
-//         typos.add(typo);
-//       }
-//     }
-
-//     // Suppression
-//     for (let i = 0; i < char.length; i++) {
-//       const typo = char.slice(0, i) + char.slice(i + 1);
-//       typos.add(typo);
-//     }
-
-//     // Permutation
-//     for (let i = 0; i < char.length - 1; i++) {
-//       const typo = char.slice(0, i) + char[i + 1] + char[i] + char.slice(i + 2);
-//       typos.add(typo);
-//     }
-//   }
-
-//   return typos;
-// }
-// export function generateTypos(input: string, maxLength = 30): Set<string> {
-//   if (input.length > maxLength) throw new Error("Input up to 50 Char");
-
-//   const typos = new Set<string>();
-//   const segmentSizes = [3, 4, 5];
-
-//   // Découpe en segments et applique des modifications sur la première et la dernière lettre
-//   for (const size of segmentSizes) {
-//     for (let start = 0; start <= input.length - size; start++) {
-//       const segment = input.slice(start, start + size);
-
-//       // Applique les modifications à la première lettre du segment
-//       if (segment.length >= 3) {
-//         // Substitution sur la première lettre
-//         for (let j = 97; j <= 122; j++) {
-//           // ASCII 'a' à 'z'
-//           const typo = String.fromCharCode(j) + segment.slice(1);
-//           typos.add(typo);
-//         }
-
-//         // Insertion avant la première lettre
-//         for (let j = 97; j <= 122; j++) {
-//           const typo = String.fromCharCode(j) + segment;
-//           typos.add(typo);
-//         }
-
-//         // Suppression de la première lettre
-//         typos.add(segment.slice(1));
-//       }
-
-//       // Applique les modifications à la dernière lettre du segment
-//       if (segment.length >= 3) {
-//         // Substitution sur la dernière lettre
-//         for (let j = 97; j <= 122; j++) {
-//           const typo = segment.slice(0, -1) + String.fromCharCode(j);
-//           typos.add(typo);
-//         }
-
-//         // Insertion après la dernière lettre
-//         for (let j = 97; j <= 122; j++) {
-//           const typo = segment + String.fromCharCode(j);
-//           typos.add(typo);
-//         }
-
-//         // Suppression de la dernière lettre
-//         typos.add(segment.slice(0, -1));
-//       }
-
-//       // Permutation entre la première et la dernière lettre (si le segment est assez long)
-//       if (segment.length > 2) {
-//         const typo =
-//           segment[segment.length - 1] + segment.slice(1, -1) + segment[0];
-//         typos.add(typo);
-//       }
-//     }
-//   }
-
-//   return typos;
-// }
-export function generateTypos(input: string, maxLength = 30): Set<string> {
+/**
+ * Function to generate common keyboard-related typos for a given string input.
+ * The function divides the input into segments of certain sizes and for each segment,
+ * it generates typos by substituting, inserting, and deleting characters
+ * that are neighbors on the physical keyboard layout.
+ *
+ * @param {string} input - The input string for which to generate typos.
+ * @param {number} maxLength - Maximum length for the input string. Default is 30.
+ *
+ * @returns {Set<string>} A set of strings, each of which is a typo of the input string.
+ *
+ * @throws {Error} If the length of the input string exceeds maxLength.
+ */
+export function fse_generateTypos(
+  input: string,
+  maxLength: number = 30
+): Set<string> {
   if (input.length > maxLength) throw new Error("Input up to 50 Char");
 
   const typos = new Set<string>();

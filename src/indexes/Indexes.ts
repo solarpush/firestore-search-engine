@@ -4,16 +4,32 @@ import {
   FirestoreSearchEngineConfig,
   FirestoreSearchEngineIndexesProps,
 } from "..";
-import { generateTypos } from "../shared/generateTypos";
+import { fse_generateTypos } from "../shared/generateTypos";
+/**
+ * The `BulkWriter` and `Firestore` objects are imported from the
+ * '@google-cloud/firestore' package. These objects are used for batched writes
+ * and cloud-based NoSQL databases respectively.
+ *
+ * Also, the `FirestoreSearchEngineConfig` and `FirestoreSearchEngineIndexesProps` objects
+ * are imported from the parent directory. These are mostly likely used to configure
+ * your Firestore Search engine. This can include settings such as security, indexes, etc.
+ *
+ * The function `generateTypos` from "../shared/generateTypos" is also imported.
+ * It's used to programmatically generate various combinations of typo errors
+ * (misspellings) based on a given string.
+ *
+ * For context-specific documentation, please refer to the respective modules' docstring or documentation.
+ */
 
 export class Indexes {
   constructor(
-    private firestoreInstance: Firestore,
-    private config: FirestoreSearchEngineConfig,
-    private props: FirestoreSearchEngineIndexesProps
+    private readonly firestoreInstance: Firestore,
+    private readonly config: FirestoreSearchEngineConfig,
+    private readonly props: FirestoreSearchEngineIndexesProps
   ) {}
+
   async execute() {
-    const typos = generateTypos(
+    const typos = fse_generateTypos(
       this.props.inputField,
       this.props.wordMaxLength
     );
@@ -23,7 +39,7 @@ export class Indexes {
     );
   }
 
-  async saveWithLimitedKeywords(
+  protected async saveWithLimitedKeywords(
     returnedFields: FirestoreSearchEngineIndexesProps["returnedFields"],
     keywords: string[]
   ) {
@@ -50,7 +66,7 @@ export class Indexes {
     await bulk.close();
     return;
   }
-  async cleanOldIndexes(
+  protected async cleanOldIndexes(
     returnedFields: FirestoreSearchEngineIndexesProps["returnedFields"],
     bulk: BulkWriter
   ) {

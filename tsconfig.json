@@ -1,11 +1,12 @@
 {
   "compilerOptions": {
     "outDir": "./dist",
-    "module": "commonjs",
-    "target": "es6",
+    "module": "ESNext",
+    "target": "ES2019",
     "declaration": true,
     "sourceMap": true,
     "strict": true,
+    "moduleResolution": "Node",
     "skipLibCheck": true
   },
   "include": ["src/**/*"]
