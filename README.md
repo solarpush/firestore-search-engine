@@ -23,28 +23,45 @@ npm install firestore-search-engine
 Start by importing all the required modules from the package:
 
 ```javascript
-import FirestoreSearchEngine from "./FirestoreSearchEngine";
-import Search from "./Search";
-import Indexes from "./Indexes";
+//esModuleSyntax
+import { FirestoreSearchEngine } from "firestore-search-engine";
+
+//commonJsSyntax
+const { FirestoreSearchEngine } = require("firestore-search-engine");
 ```
 
 Then, create an instance of the FirestoreSearchEngine:
 
 ```javascript
-const searchEngine = new FirestoreSearchEngine(firestore(), {
+//init the search engine and provide the engine to your app
+//outside of onRequest or onCall  or middleWare function
+export const searchEngineUserName = new FirestoreSearchEngine(firestore(), {
   collection: "YourCollectionName", //not change collection after indexing or re-indexe all
 });
+
+//you can provide other searchEngine for each collection you want indexing with another collectionValue
 ```
 
-After that, call a searchEngine.indexes for index your document:
+After that, call a searchEngine.indexes for index your document when you create it:
 
 ```javascript
-await searchEngine.indexes({
-  inputField: inputField,
+const updateName = "YourFieldValue";
+const documentId = "YourDocumentId";
+const myDocumentRef = firestore()
+  .collection("YourCollectionName")
+  .doc(documentId);
+//first save you doc
+await myDocumentRef.set(
+  { name: updateName, docId: documentId },
+  { merge: true }
+);
+//at same time re-index your document from the search fiels you want search in the inputField
+await searchEngineUserName.indexes({
+  inputField: updateName,
   returnedFields: {
-    indexedDocumentPath:
-      "/company/TsqUbTpKgdeUXrclUUIrGaDWLeZ9/submissions/50366", //required field for index only 1 time each document
-    name: "ExistingNameKeyInMyDocument", //optional fields you can add the key who you need to be returned in the search result
+    indexedDocumentPath: myDocumentRef.path, //required field for index only 1 time each document
+    name: updateName, //optional fields you can add the key who you need to be returned in the search result
+    docId: documentId, //optional fields you can add the key who you need to be returned in the search result
   },
 });
 ```
@@ -52,7 +69,7 @@ await searchEngine.indexes({
 Finally, execute the search operation:
 
 ```javascript
-const results = await searchEngine.search({
+const results = await searchEngineUserName.search({
   fieldValue: inputField,
 }); //That will return all document information who are saved in dexed values
 ```
@@ -65,10 +82,26 @@ Below is a complete usage example of the Firestore Search Engine Package:
 
 ```javascript
 // index.ts
-import FirestoreSearchEngine from "./FirestoreSearchEngine";
+// express
+import { FirestoreSearchEngine } from "firestore-search-engine";
+
 app.post("/YourSearchEndPoint", async (request, response) => {
   const { inputField } = JSON.parse(request.body);
-  const result = await searchEngine.search({
+  //provide an endpoint for your search operation
+  const result = await searchEngineUserName.search({
+    fieldValue: inputField,
+  });
+  response.json(result);
+  return;
+});
+
+// onRequest
+import { FirestoreSearchEngine } from "firestore-search-engine";
+
+export const searchUserName = onRequest(async (request, response) => {
+  const { inputField } = JSON.parse(request.body);
+  //provide an endpoint for your search operation
+  const result = await searchEngineUserName.search({
     fieldValue: inputField,
   });
   response.json(result);
