@@ -20,6 +20,7 @@ export default {
     "@types/express",
     "@types/node",
     "firebase-functions",
+    "firebase-functions/https",
   ],
   plugins: [typescript(), terser()],
 };

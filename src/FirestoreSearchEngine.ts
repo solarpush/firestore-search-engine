@@ -1,7 +1,7 @@
 import type { Firestore } from "@google-cloud/firestore";
 import type { Application, Request, Response } from "express";
 import { CallableRequest, HttpsError } from "firebase-functions/https";
-import { EventHandlerOptions } from "firebase-functions/options";
+import type { EventHandlerOptions } from "firebase-functions/options";
 import type {
   onDocumentCreated,
   onDocumentDeleted,

@@ -1,7 +1,7 @@
 import type { Firestore } from "@google-cloud/firestore";
 import type { Application, Request, Response } from "express";
 import { CallableRequest } from "firebase-functions/https";
-import { EventHandlerOptions } from "firebase-functions/options";
+import type { EventHandlerOptions } from "firebase-functions/options";
 import type { onDocumentCreated, onDocumentDeleted, onDocumentUpdated } from "firebase-functions/v2/firestore";
 import type { FirestoreSearchEngineConfig, FirestoreSearchEngineIndexesProps, FirestoreSearchEngineReturnType, FirestoreSearchEngineSearchProps, PathWithSubCollectionsMaxDepth4 } from ".";
 /**
