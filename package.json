@@ -7,6 +7,10 @@
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "homepage": "https://github.com/solarpush/firestore-search-engine",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/solarpush/firestore-search-engine.git"
+  },
   "scripts": {
     "build:tsc": "tsc",
     "clean": "rimraf dist",
