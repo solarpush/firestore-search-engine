@@ -15,8 +15,9 @@ export function fse_generateTypos(
   input: string,
   maxLength: number
 ): Set<string> {
+  console.time("fse_generateTypos");
   if (input.length > maxLength) throw new Error("Input up to 50 Char");
-
+  input = input.toLowerCase();
   const typos = new Set<string>();
 
   const segmentSizes = input.length > 4 ? [4, 5, 6] : [3, 4];
@@ -91,5 +92,6 @@ export function fse_generateTypos(
     }
   }
 
+  console.timeEnd("fse_generateTypos");
   return typos;
 }

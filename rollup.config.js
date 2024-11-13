@@ -21,6 +21,7 @@ export default {
     "@types/node",
     "firebase-functions",
     "firebase-functions/https",
+    "fastembed",
   ],
   plugins: [typescript(), terser()],
 };

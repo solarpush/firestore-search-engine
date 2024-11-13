@@ -1,5 +1,6 @@
 import type { Firestore } from "@google-cloud/firestore";
 import type { Application, Request, Response } from "express";
+import { firestore } from "firebase-admin";
 import { CallableRequest, HttpsError } from "firebase-functions/https";
 import type { EventHandlerOptions } from "firebase-functions/options";
 import type {
@@ -9,12 +10,14 @@ import type {
 } from "firebase-functions/v2/firestore";
 import type {
   FirestoreSearchEngineConfig,
+  FirestoreSearchEngineIndexesAllProps,
   FirestoreSearchEngineIndexesProps,
   FirestoreSearchEngineReturnType,
   FirestoreSearchEngineSearchProps,
   PathWithSubCollectionsMaxDepth4,
 } from ".";
 import { Indexes } from "./indexes/Indexes";
+import { IndexesAll } from "./indexes/IndexesAll";
 import { Search } from "./search/Search";
 import { getDiffFromUpdatedData } from "./shared/getDiffFromDocumentUpdate";
 /**
@@ -41,7 +44,8 @@ import { getDiffFromUpdatedData } from "./shared/getDiffFromDocumentUpdate";
 export class FirestoreSearchEngine {
   constructor(
     private readonly firestoreInstance: Firestore,
-    private readonly config: FirestoreSearchEngineConfig
+    private readonly config: FirestoreSearchEngineConfig,
+    private readonly fieldValueInstance: typeof firestore.FieldValue
   ) {
     //Configure Firestore for never throw if undefined value
     this.firestoreInstance.settings({ ignoreUndefinedProperties: true });
@@ -101,9 +105,26 @@ export class FirestoreSearchEngine {
     }
     return await new Indexes(
       this.firestoreInstance,
+      this.fieldValueInstance,
       this.config,
       props
     ).execute();
+  }
+
+  async indexesAll(docProps: {
+    documentProps: FirestoreSearchEngineIndexesAllProps;
+    documentsToIndexes: FirestoreSearchEngineIndexesProps["returnedFields"][];
+    indexesConfig: Pick<
+      FirestoreSearchEngineIndexesProps,
+      "wordMaxLength" | "wordMinLength"
+    >;
+  }) {
+    return await new IndexesAll(
+      this.firestoreInstance,
+      this.fieldValueInstance,
+      this.config,
+      docProps.indexesConfig
+    ).execute(docProps);
   }
   async expressWrapper(app: Application, path: string = "/search") {
     if (!path || !path.startsWith("/"))

@@ -1,9 +1,10 @@
 import type { Firestore } from "@google-cloud/firestore";
 import type { Application, Request, Response } from "express";
+import { firestore } from "firebase-admin";
 import { CallableRequest } from "firebase-functions/https";
 import type { EventHandlerOptions } from "firebase-functions/options";
 import type { onDocumentCreated, onDocumentDeleted, onDocumentUpdated } from "firebase-functions/v2/firestore";
-import type { FirestoreSearchEngineConfig, FirestoreSearchEngineIndexesProps, FirestoreSearchEngineReturnType, FirestoreSearchEngineSearchProps, PathWithSubCollectionsMaxDepth4 } from ".";
+import type { FirestoreSearchEngineConfig, FirestoreSearchEngineIndexesAllProps, FirestoreSearchEngineIndexesProps, FirestoreSearchEngineReturnType, FirestoreSearchEngineSearchProps, PathWithSubCollectionsMaxDepth4 } from ".";
 /**
  * Configures the Firestore instance and throws an error if a necessary
  * condition (collection name being a non-empty string) is not satisfied.
@@ -27,7 +28,8 @@ import type { FirestoreSearchEngineConfig, FirestoreSearchEngineIndexesProps, Fi
 export declare class FirestoreSearchEngine {
     private readonly firestoreInstance;
     private readonly config;
-    constructor(firestoreInstance: Firestore, config: FirestoreSearchEngineConfig);
+    private readonly fieldValueInstance;
+    constructor(firestoreInstance: Firestore, config: FirestoreSearchEngineConfig, fieldValueInstance: typeof firestore.FieldValue);
     /**
      * Conducts a search operation in the Firestore collection configured for this FirestoreSearchEngine instance,
      * and delivers the search results.
@@ -61,6 +63,11 @@ export declare class FirestoreSearchEngine {
      * For more information and usage examples, refer to the Firestore Search Engine [documentation](https://github.com/solarpush/firestore-search-engine).
      */
     indexes(props: FirestoreSearchEngineIndexesProps): Promise<void>;
+    indexesAll(docProps: {
+        documentProps: FirestoreSearchEngineIndexesAllProps;
+        documentsToIndexes: FirestoreSearchEngineIndexesProps["returnedFields"][];
+        indexesConfig: Pick<FirestoreSearchEngineIndexesProps, "wordMaxLength" | "wordMinLength">;
+    }): Promise<void>;
     expressWrapper(app: Application, path?: string): Promise<Application>;
     onRequestWrapped(): (request: Request, response: Response<any>) => void | Promise<void>;
     onCallWrapped(authCallBack: (auth: CallableRequest["auth"]) => Promise<boolean> | boolean): (data: CallableRequest) => Promise<FirestoreSearchEngineReturnType>;

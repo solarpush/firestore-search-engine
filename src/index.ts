@@ -19,6 +19,16 @@ export type FirestoreSearchEngineIndexesProps = {
    */
   wordMaxLength?: number;
 };
+export type FirestoreSearchEngineIndexesAllProps = {
+  /**
+   * The key you want to indexe for search by this key.
+   */
+  indexedKey: string;
+  /**
+   * An Array on object key you want to be returned indexe collection.
+   */
+  returnedKey: string[];
+};
 
 /**
  * TypeScript type for Firestore search engine search properties

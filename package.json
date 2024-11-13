@@ -41,9 +41,12 @@
   "license": "ISC",
   "dependencies": {
     "@google-cloud/firestore": "^7.10.0",
+    "fastembed": "^1.14.1",
+    "firebase-admin": "^12.7.0",
     "firebase-functions": "^6.1.0"
   },
   "devDependencies": {
+    "@esbuild/linux-x64": "^0.24.0",
     "@rollup/plugin-terser": "^0.4.4",
     "@rollup/plugin-typescript": "^12.1.1",
     "@types/express": "^5.0.0",
@@ -51,6 +54,7 @@
     "rimraf": "^6.0.1",
     "rollup": "^4.25.0",
     "tslib": "^2.8.1",
+    "tsx": "^4.19.2",
     "typescript": "^5.6.3"
   }
 }

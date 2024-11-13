@@ -38,6 +38,6 @@ export const getDiffFromUpdatedData = <T extends object>(
     added,
     removed,
   };
-  console.log("ChangeMap : " + JSON.stringify(changes));
+
   return change;
 };

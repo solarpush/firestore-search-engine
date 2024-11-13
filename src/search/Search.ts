@@ -5,8 +5,8 @@ import {
   FirestoreSearchEngineReturnType,
   FirestoreSearchEngineSearchProps,
 } from "..";
-import { fse_generateCharArray } from "../shared/generateCharArray";
-import { fse_levenshteinDistance } from "../shared/levenshteinDistance";
+import { fse_rankResults } from "../shared/rankResults";
+import { fse_vectorizeText } from "../shared/vectorize";
 /**
  * A Search class that interacts with Google Cloud Firestore API for operations like read, write and update
  * Uses FirestoreSearchEngineConfig, FirestoreSearchEngineIndexesProps, FirestoreSearchEngineSearchProps for various configuration
@@ -25,8 +25,8 @@ export class Search {
     private readonly config: FirestoreSearchEngineConfig,
     private readonly props: FirestoreSearchEngineSearchProps
   ) {
-    if (!props.limit) {
-      this.props.limit = 20;
+    if (!this.props.limit) {
+      this.props.limit = 10;
     }
   }
   async execute() {
@@ -35,52 +35,45 @@ export class Search {
   protected async search(
     fieldValue: string
   ): Promise<FirestoreSearchEngineReturnType> {
-    const searchKeywords = fse_generateCharArray(fieldValue);
+    console.time("Search Execution Time");
+    console.time("SearchQueryTime");
+    const queryVector = await fse_vectorizeText(fieldValue);
+
     const querySnapshot = await this.firestoreInstance
-      .collection(this.config.collection)
-      .where("search_keywords", "array-contains-any", [...searchKeywords])
+      .collectionGroup(this.config.collection)
+      .findNearest({
+        vectorField: "search_keywords",
+        queryVector: queryVector,
+        limit: this.props.limit as number,
+        distanceMeasure: "COSINE",
+        distanceThreshold: 0.2,
+        distanceResultField: "distance",
+      })
       .get();
+    console.timeEnd("SearchQueryTime");
     if (querySnapshot.empty) {
+      console.timeEnd("Search Execution Time");
       return [];
     }
     const uniqueDocs = new Set<string>();
-    const results: {
-      doc: FirestoreSearchEngineReturnType[0];
-      relevance: number;
-    }[] = [];
-
+    const results: any[] = [];
+    console.time("SearchLoopTime");
+    console.log("Search Query Length", querySnapshot.docs.length);
     for (const doc of querySnapshot.docs) {
       const data =
         doc.data() as FirestoreSearchEngineIndexesProps["returnedFields"] & {
           search_keywords: string[];
         };
-      const { search_keywords, ...rest } = data;
       const uniqueId = data.indexedDocumentPath;
-      search_keywords.forEach((keyword) => {
-        const words = fieldValue.split(" ");
-        let isCloseEnough = false;
-        let closeRelevance: number = 0;
-
-        let distanceTotal: number = 0;
-
-        for (const word of words) {
-          const distance = fse_levenshteinDistance(word, keyword);
-          if (distance <= 2) {
-            isCloseEnough = true;
-            closeRelevance = Math.min(distance, closeRelevance || Infinity);
-          }
-          distanceTotal += distance;
-        }
-        console.log(distanceTotal, isCloseEnough, fieldValue, words);
-        if (isCloseEnough && distanceTotal <= 6 && !uniqueDocs.has(uniqueId)) {
-          uniqueDocs.add(uniqueId);
-          results.push({ doc: rest, relevance: closeRelevance });
-        }
-      });
+      if (!uniqueDocs.has(uniqueId)) {
+        uniqueDocs.add(uniqueId);
+        results.push(data);
+      }
     }
-    results.sort((a, b) => a.relevance - b.relevance);
-
-    const topResults = results.slice(0, this.props.limit);
-    return topResults.map((result) => result.doc);
+    console.timeEnd("SearchLoopTime");
+    const ranked = fse_rankResults(results, fieldValue);
+    const topResults = ranked;
+    console.timeEnd("Search Execution Time");
+    return topResults;
   }
 }

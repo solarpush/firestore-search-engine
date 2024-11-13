@@ -6,7 +6,7 @@ node_modules/
 # build
 /build
 /dist
-
+/local_cache
 # logs
 logs
 

@@ -1,5 +1,6 @@
-import type { BulkWriter, Firestore } from "@google-cloud/firestore";
-import { FirestoreSearchEngineConfig, FirestoreSearchEngineIndexesProps } from "..";
+import type { BulkWriter } from "@google-cloud/firestore";
+import { firestore } from "firebase-admin";
+import type { FirestoreSearchEngineConfig, FirestoreSearchEngineIndexesProps } from "..";
 /**
  * The `BulkWriter` and `Firestore` objects are imported from the
  * '@google-cloud/firestore' package. These objects are used for batched writes
@@ -17,12 +18,13 @@ import { FirestoreSearchEngineConfig, FirestoreSearchEngineIndexesProps } from "
  */
 export declare class Indexes {
     private readonly firestoreInstance;
+    private readonly fieldValueInstance;
     private readonly config;
     private readonly props;
     wordMinLength: number;
     wordMaxLength: number;
-    constructor(firestoreInstance: Firestore, config: FirestoreSearchEngineConfig, props: FirestoreSearchEngineIndexesProps);
+    constructor(firestoreInstance: firestore.Firestore, fieldValueInstance: typeof firestore.FieldValue, config: FirestoreSearchEngineConfig, props: FirestoreSearchEngineIndexesProps);
     execute(): Promise<void>;
-    protected saveWithLimitedKeywords(returnedFields: FirestoreSearchEngineIndexesProps["returnedFields"], keywords: string[]): Promise<void>;
+    protected saveWithLimitedKeywords(returnedFields: FirestoreSearchEngineIndexesProps["returnedFields"], keywords: number[]): Promise<void>;
     protected cleanOldIndexes(returnedFields: FirestoreSearchEngineIndexesProps["returnedFields"], bulk: BulkWriter): Promise<void>;
 }

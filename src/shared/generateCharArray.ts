@@ -14,6 +14,7 @@ export function fse_generateCharArray(
   startIndex: number = 3,
   maxLength: number = 8
 ): string[] {
+  console.time("fse_generateCharArray");
   const fragments: Set<string> = new Set();
   const words = input.trim().split(" ");
 
@@ -28,6 +29,7 @@ export function fse_generateCharArray(
     if (i <= startIndex) continue;
     fragments.add(input.trim().substring(0, i).toLowerCase());
   }
-  console.log(fragments);
+
+  console.timeEnd("fse_generateCharArray");
   return Array.from(fragments);
 }
