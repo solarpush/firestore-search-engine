@@ -15,6 +15,8 @@ export declare class Search {
     private readonly firestoreInstance;
     private readonly config;
     private readonly props;
+    wordMinLength: number;
+    wordMaxLength: number;
     constructor(firestoreInstance: Firestore, config: FirestoreSearchEngineConfig, props: FirestoreSearchEngineSearchProps);
     execute(): Promise<FirestoreSearchEngineReturnType>;
     protected search(fieldValue: string): Promise<FirestoreSearchEngineReturnType>;

@@ -1,6 +1,13 @@
 import type { Change } from "firebase-functions";
 import type { QueryDocumentSnapshot } from "firebase-functions/firestore";
 import { deepEqual } from "../utils/objects/deepEqual";
+/**
+ * This function compares the 'before' and 'after' snapshots of a Firestore document and returns an object containing the changes, added, and removed fields.
+ * It uses a custom deep equal function to compare objects.
+ * @param {Object} data - The snapshot data containing the before and after Firestore document snapshots.
+ * @returns {Object} - An object containing the changes, added, and removed fields.
+ */
+
 export const getDiffFromUpdatedData = <T extends object>(
   data: Change<QueryDocumentSnapshot>
 ) => {

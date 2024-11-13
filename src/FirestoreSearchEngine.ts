@@ -60,7 +60,7 @@ export class FirestoreSearchEngine {
    * and delivers the search results.
    * @example
    * const firestoreSearchEngine = new FirestoreSearchEngine(firestoreInstance, { collection: 'myCollection' });
-   * const results = await firestoreSearchEngine.search({ fieldValue: 'searchQuery' });
+   * const results = await firestoreSearchEngine.search({ fieldValue: 'searchQuery', limit: 10 });
    * console.log(results);//{ [x: string]: any; indexedDocumentPath: string; }[]
    *
    * @param {FirestoreSearchEngineSearchProps} props - An object specifying the details of the search query operation.
@@ -111,19 +111,40 @@ export class FirestoreSearchEngine {
     ).execute();
   }
 
+  /**
+   * Indexes all documents in the Firestore database.
+   * @param {Object} docProps - The documents to index.
+   * @param {FirestoreSearchEngineIndexesAllProps} docProps.documentProps - The properties of the documents to index.
+   * @param {FirestoreSearchEngineIndexesProps['returnedFields'][]} docProps.documentsToIndexes - The fields of the documents to index.
+   * @return {Promise<any>} A promise that resolves to the result of the indexing operation.
+   * @example
+   *   const docProps = {
+   *    documentProps: {
+   *        fieldsToIndex: ['title', 'content'],
+   *     },
+   *    documentsToIndexes: [
+   *        { documentId: 'doc1', title: 'Hello World', content: 'This is an example document.' },
+   *        { documentId: 'doc2', title: 'Welcome to my site', content: 'This site contains useful information.' },
+   *     ],
+   *  };
+   *
+   *  firestoreSearchEngine.indexesAll(docProps)
+   *  .then((result) => {
+   *    console.log('Indexing completed successfully:', result);
+   *  })
+   *  .catch((error) => {
+   *    console.error('Error indexing documents:', error);
+   *  });
+   *
+   */
   async indexesAll(docProps: {
     documentProps: FirestoreSearchEngineIndexesAllProps;
     documentsToIndexes: FirestoreSearchEngineIndexesProps["returnedFields"][];
-    indexesConfig: Pick<
-      FirestoreSearchEngineIndexesProps,
-      "wordMaxLength" | "wordMinLength"
-    >;
   }) {
     return await new IndexesAll(
       this.firestoreInstance,
       this.fieldValueInstance,
-      this.config,
-      docProps.indexesConfig
+      this.config
     ).execute(docProps);
   }
   async expressWrapper(app: Application, path: string = "/search") {
@@ -146,6 +167,18 @@ export class FirestoreSearchEngine {
     );
     return app;
   }
+
+  /**
+   * Wraps an Express application and adds a route for performing a search.
+   * @param {Application} app - The Express application to wrap.
+   * @param {string} [path="/search"] - The path to bind the search route to (default: "/search").
+   * @return {Application} The wrapped Express application.
+   *
+   * @example
+   * const app = express();
+   * const firestoreSearchEngine = new FirestoreSearchEngine(firestoreInstance, fieldValueInstance, config);
+   * firestoreSearchEngine.expressWrapper(app, "/api/search");
+   */
   onRequestWrapped(): (
     request: Request,
     response: Response<any>
@@ -167,6 +200,27 @@ export class FirestoreSearchEngine {
       return;
     };
   }
+  /**
+   * Wraps a callable function with authentication and search functionality.
+   * @param {(auth: CallableRequest["auth"]) => Promise<boolean> | boolean} authCallBack - A callback function to perform authentication.
+   * @return {(data: CallableRequest) => Promise<FirestoreSearchEngineReturnType>} A function that performs authentication, search, and returns the search results.
+   *
+   * @example
+   * import { FirestoreSearchEngine } from "firestore-search-engine";
+   *
+   * const authCallback = (auth: CallableRequest["auth"]) => {
+   *    if (auth && auth.uid) return true;
+   *    return false;
+   *  };
+   *  export const onCallSearchWrapped = onCall(
+   *    { region: "europe-west3" },
+   *    searchEngineUserName.onCallWrapped(authCallback)
+   *  );
+   *  //in Front-end callableFunction call with :
+   *  //
+   *  httpsCallable(searchUserName)({ searchValue: inputValue });
+   *  //method: Managed from front package.json file
+   */
   onCallWrapped(
     authCallBack: (auth: CallableRequest["auth"]) => Promise<boolean> | boolean
   ): (data: CallableRequest) => Promise<FirestoreSearchEngineReturnType> {
@@ -190,12 +244,31 @@ export class FirestoreSearchEngine {
       return result;
     };
   }
+
+  /**
+   * Wraps an onDocumentWritten callback function in Firestore.
+   * @param {OnDocumentWrittenCallback} onDocumentWrittenCallBack - The callback function to wrap.
+   * @param {FirestoreSearchEngineDocumentProps} documentProps - The properties of the document to index.
+   * @param {FirestoreSearchEngineDocumentPath} documentsPath - The path of the documents to index.
+   * @param {FirestoreSearchEngineConfigProps} [props={}] - The configuration properties for the search engine.
+   * @param {EventHandlerOptions} [eventHandlerOptions={}] - The options for the event handler.
+   * @return {Function} The wrapped onDocumentWritten callback function.
+   *
+   * @example
+   * export const firestoreWriter = searchEngineUserName.onDocumentWriteWrapper(
+   *    onDocumentCreated, // onDocumentCreated method
+   *    { indexedKey: "test", returnedKey: ["other", "setAt"] }, // the key you want to index and return in the search result
+   *    "test/{testId}", //documentPath or subCollectionDocumentPath  && 5 recursive level only
+   *    { wordMaxLength: 25 }, //optional config object set undefined, to default accept wordMinLength: 3, wordMaxLength: 50 for indexing control and reduce indexing size
+   *    { region: "europe-west3" } //EventHandlerOptions optional
+   *  );
+   */
   onDocumentWriteWrapper(
     onDocumentWrittenCallBack: typeof onDocumentCreated,
     documentProps: { indexedKey: string; returnedKey: string[] },
     documentsPath: PathWithSubCollectionsMaxDepth4,
     props: Pick<
-      FirestoreSearchEngineIndexesProps,
+      FirestoreSearchEngineConfig,
       "wordMaxLength" | "wordMinLength"
     > = {},
     eventHandlerOptions: EventHandlerOptions = {}
@@ -228,6 +301,7 @@ export class FirestoreSearchEngine {
               },
             });
           } catch (error) {
+            console.error(error);
             return;
           }
         }
@@ -235,12 +309,30 @@ export class FirestoreSearchEngine {
       }
     );
   }
+  /**
+   * Wraps an onDocumentUpdated callback function in Firestore.
+   * @param {OnDocumentUpdatedCallback} instanceOfOnDocumentUpdated - The callback function to wrap.
+   * @param {FirestoreSearchEngineDocumentProps} documentProps - The properties of the document to index.
+   * @param {FirestoreSearchEngineDocumentPath} documentsPath - The path of the document to index.
+   * @param {FirestoreSearchEngineConfigProps} [props={}] - The configuration properties for the search engine.
+   * @param {EventHandlerOptions} [eventHandlerOptions={}] - The options for the event handler.
+   * @return {Function} The wrapped onDocumentUpdated callback function.
+   *
+   * @example
+   *export const firestoreUpdated = searchEngineUserName.onDocumentUpdateWrapper(
+   * onDocumentUpdated, // onDocumentUpdated method
+   *  { indexedKey: "test", returnedKey: ["other", "setAt"] }, // the key you want to index and return in the search result
+   *  "test/{testId}", //documentPath or subCollectionDocumentPath  && 5 recursive level only
+   *  { wordMinLength: 3 }, //optional config object set {} to default accept wordMinLength: 3, wordMaxLength: 50 for indexing control
+   *  { region: "europe-west3" } //EventHandlerOptions optional
+   *);
+   */
   onDocumentUpdateWrapper(
     instanceOfOnDocumentUpdated: typeof onDocumentUpdated,
     documentProps: { indexedKey: string; returnedKey: string[] },
     documentsPath: PathWithSubCollectionsMaxDepth4,
     props: Pick<
-      FirestoreSearchEngineIndexesProps,
+      FirestoreSearchEngineConfig,
       "wordMaxLength" | "wordMinLength"
     > = {},
     eventHandlerOptions: EventHandlerOptions = {}
@@ -274,6 +366,7 @@ export class FirestoreSearchEngine {
               },
             });
           } catch (error) {
+            console.error(error);
             return;
           }
         }
@@ -281,6 +374,18 @@ export class FirestoreSearchEngine {
       }
     );
   }
+  /**
+   * Wraps an onDocumentDeleted callback function in Firestore.
+   * @param {OnDocumentDeletedCallback} instanceOfOnDocumentDeleted - The callback function to wrap.
+   * @param {FirestoreSearchEngineDocumentPath} documentsPath - The path of the document to delete.
+   * @param {FirestoreSearchEngineConfigProps} [eventHandlerOptions={}] - The options for the event handler.
+   * @return {Function} The wrapped onDocumentDeleted callback function.
+   * export const firestoreDeleted = searchEngineUserName.onDocumentDeletedWrapper(
+   *  onDocumentDeleted, // onDocumentDeleted method
+   *  "test/{testId}", //documentPath or subCollectionDocumentPath  && 5 recursive level only
+   *  { region: "europe-west3" } //EventHandlerOptions optional
+   *  );
+   */
   onDocumentDeletedWrapper(
     instanceOfOnDocumentDeleted: typeof onDocumentDeleted,
     documentsPath: PathWithSubCollectionsMaxDepth4,
@@ -301,7 +406,7 @@ export class FirestoreSearchEngine {
           for (let index = 0; index < querySnap.docs.length; index++) {
             const doc = querySnap.docs[index];
             bulk.delete(doc.ref);
-            if (index % 500 === 0) await bulk.flush();
+            if (index > 500) await bulk.flush();
           }
           await bulk.close();
         } catch (error) {

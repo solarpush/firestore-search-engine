@@ -10,14 +10,6 @@ export type FirestoreSearchEngineIndexesProps = {
    * The returned fields.
    */
   returnedFields: { indexedDocumentPath: string } & Record<string, any>;
-  /**
-   * The minimum length of the word (optional) default 3.
-   */
-  wordMinLength?: number;
-  /**
-   * The maximum length of the word (optional) default 50.
-   */
-  wordMaxLength?: number;
 };
 export type FirestoreSearchEngineIndexesAllProps = {
   /**
@@ -52,6 +44,14 @@ export type FirestoreSearchEngineConfig = {
    * The collection.
    */
   collection: string;
+  /**
+   * The minimum length of the word (optional) default 3.
+   */
+  wordMinLength?: number;
+  /**
+   * The maximum length of the word (optional) default 50.
+   */
+  wordMaxLength?: number;
 };
 
 export type FirestoreSearchEngineReturnType = {

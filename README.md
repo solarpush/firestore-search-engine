@@ -17,6 +17,23 @@ This is a powerful and flexible search engine server for Firestore. This package
 - Support only string search
 - Full wrapped for express/onCall/onRequest functions
 - Built-in Firestore Triggers onCreate/onUpdate/onDelete for automated features
+- Use [**Vector query**](https://firebase.google.com/docs/firestore/vector-search) from firestore vector embeded for better performances
+- Use [**sentence_transformers model**](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2)
+- Use [**FastEmbeded for interact with model**](https://www.npmjs.com/package/fastembed)
+
+---
+
+---
+
+**<span style="color: red">Warning:</span>** add the model is injected in /src/cache for the first call is download. For cloud functions implementation on prod it's recommended to create a separated repository and a new firebase init with only this function and the model in src/cache folder in the same firebase project. This is because the model is large(80+Mb) and can cause deployment issues and cost if it is included in the main repository.
+
+Also upgrade memory of cloud functions from 256MB to 512MB or 1GB for better performances and avoid out of memory errors.
+
+##### For more informations : [Firebase docs about organize-functions](https://firebase.google.com/docs/functions/organize-functions)
+
+---
+
+---
 
 When you know how it work you take only 5 minutes for implement new indexed field for a document and build endpoint for search it
 
@@ -47,9 +64,10 @@ Then, create an instance of the FirestoreSearchEngine:
 //init the search engine and provide the engine to your app
 //outside of onRequest or onCall  or middleWare function
 export const searchEngineUserName = new FirestoreSearchEngine(firestore(), {
-  collection: "YourCollectionName", //not change collection after indexing or re-indexe all
-  // or sub collection is "YourCollectionName/YourDocumentName/YourSubCollectionName"
-});
+  collection: "YourCollectionName", // or sub collection is "YourCollectionName/YourDocumentName/YourSubCollectionName"
+  wordMaxLength: 100, //optional default 100
+  wordMinLength: 3, //optional default 3
+}); //not change config after indexing or re-indexe all befor use the search feature
 
 //you can provide other searchEngine for each collection you want indexing with another collectionValue
 ```

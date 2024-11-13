@@ -30,21 +30,24 @@ export class Indexes {
     private readonly config: FirestoreSearchEngineConfig,
     private readonly props: FirestoreSearchEngineIndexesProps
   ) {
-    if (!this.props.wordMaxLength) {
-      this.wordMaxLength = 50;
+    if (!this.config.wordMaxLength) {
+      this.wordMaxLength = 100;
     } else {
-      this.wordMaxLength = this.props.wordMaxLength;
+      this.wordMaxLength = this.config.wordMaxLength;
     }
-    if (!this.props.wordMinLength) {
+    if (!this.config.wordMinLength) {
       this.wordMinLength = 3;
     } else {
-      this.wordMinLength = this.props.wordMinLength;
+      this.wordMinLength = this.config.wordMinLength;
     }
   }
 
   async execute() {
     // const typos = fse_generateTypos(this.props.inputField, this.wordMaxLength);
-    const typos = await fse_vectorizeText(this.props.inputField);
+    const typos = await fse_vectorizeText(
+      this.props.inputField,
+      this.wordMaxLength
+    );
     return await this.saveWithLimitedKeywords(this.props.returnedFields, typos);
   }
 
@@ -58,28 +61,10 @@ export class Indexes {
     bulk.create(
       this.firestoreInstance.collection(this.config.collection).doc(),
       {
-        search_keywords: this.fieldValueInstance.vector(keywords),
+        vectors: this.fieldValueInstance.vector(keywords),
         ...returnedFields,
       }
     );
-    // const chunkSize = 800;
-    // const keywordChunks: string[][] = [];
-
-    // for (let i = 0; i < keywords.length; i += chunkSize) {
-    //   keywordChunks.push(keywords.slice(i, i + chunkSize));
-    // }
-    // for (let j = 0; j < keywordChunks.length; j++) {
-    //   bulk.create(
-    //     this.firestoreInstance.collection(this.config.collection).doc(),
-    //     {
-    //       search_keywords: keywordChunks[j],
-    //       ...returnedFields,
-    //     }
-    //   );
-    //   if (j % 500 === 0) {
-    //     await bulk.flush();
-    //   }
-    // }
     await bulk.close();
     return;
   }

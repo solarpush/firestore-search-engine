@@ -29,21 +29,17 @@ export class IndexesAll {
   constructor(
     private readonly firestoreInstance: Firestore,
     private readonly fieldValueInstance: typeof firestore.FieldValue,
-    private readonly config: FirestoreSearchEngineConfig,
-    private readonly props: Pick<
-      FirestoreSearchEngineIndexesProps,
-      "wordMaxLength" | "wordMinLength"
-    >
+    private readonly config: FirestoreSearchEngineConfig
   ) {
-    if (!this.props.wordMaxLength) {
-      this.wordMaxLength = 50;
+    if (!this.config.wordMaxLength) {
+      this.wordMaxLength = 100;
     } else {
-      this.wordMaxLength = this.props.wordMaxLength;
+      this.wordMaxLength = this.config.wordMaxLength;
     }
-    if (!this.props.wordMinLength) {
+    if (!this.config.wordMinLength) {
       this.wordMinLength = 3;
     } else {
-      this.wordMinLength = this.props.wordMinLength;
+      this.wordMinLength = this.config.wordMinLength;
     }
   }
 
@@ -68,8 +64,7 @@ export class IndexesAll {
       for (const key of documentProps.returnedKey) {
         returnedFields[key] = element[key];
       }
-      const typos = await fse_vectorizeText(inputField);
-      console.log("HERE TYPOS", typos);
+      const typos = await fse_vectorizeText(inputField, this.wordMaxLength);
       readyToBulk.push({
         keywords: typos,
         returnedFields,
@@ -94,29 +89,15 @@ export class IndexesAll {
       bulk.create(
         this.firestoreInstance.collection(this.config.collection).doc(),
         {
-          search_keywords: this.fieldValueInstance.vector(document.keywords),
+          vectors: this.fieldValueInstance.vector(document.keywords),
           ...document.returnedFields,
         }
       );
-      // const chunkSize = 800;
-      // const keywordChunks: string[][] = [];
-      // for (let i = 0; i < document.keywords.length; i += chunkSize) {
-      //   keywordChunks.push(document.keywords.slice(i, i + chunkSize));
-      // }
-      // for (let j = 0; j < keywordChunks.length; j++) {
-      //   bulk.create(
-      //     this.firestoreInstance.collection(this.config.collection).doc(),
-      //     {
-      //       search_keywords: keywordChunks[j],
-      //       ...document.returnedFields,
-      //     }
-      //   );
       bulkCount++;
       if (bulkCount > 1500) {
         await bulk.flush();
         bulkCount++;
       }
-      // }
     }
     await bulk.close();
     return;
@@ -137,7 +118,6 @@ export class IndexesAll {
       bulkCount++;
       if (bulkCount > 1500) await bulk.flush();
     }
-
     return;
   }
 }

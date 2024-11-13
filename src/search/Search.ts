@@ -20,6 +20,8 @@ import { fse_vectorizeText } from "../shared/vectorize";
  */
 
 export class Search {
+  wordMinLength: number;
+  wordMaxLength: number;
   constructor(
     private readonly firestoreInstance: Firestore,
     private readonly config: FirestoreSearchEngineConfig,
@@ -28,6 +30,16 @@ export class Search {
     if (!this.props.limit) {
       this.props.limit = 10;
     }
+    if (!this.config.wordMaxLength) {
+      this.wordMaxLength = 100;
+    } else {
+      this.wordMaxLength = this.config.wordMaxLength;
+    }
+    if (!this.config.wordMinLength) {
+      this.wordMinLength = 3;
+    } else {
+      this.wordMinLength = this.config.wordMinLength;
+    }
   }
   async execute() {
     return await this.search(this.props.fieldValue);
@@ -35,10 +47,7 @@ export class Search {
   protected async search(
     fieldValue: string
   ): Promise<FirestoreSearchEngineReturnType> {
-    console.time("Search Execution Time");
-    console.time("SearchQueryTime");
-    const queryVector = await fse_vectorizeText(fieldValue);
-
+    const queryVector = await fse_vectorizeText(fieldValue, this.wordMaxLength);
     const querySnapshot = await this.firestoreInstance
       .collectionGroup(this.config.collection)
       .findNearest({
@@ -50,19 +59,15 @@ export class Search {
         distanceResultField: "distance",
       })
       .get();
-    console.timeEnd("SearchQueryTime");
     if (querySnapshot.empty) {
-      console.timeEnd("Search Execution Time");
       return [];
     }
     const uniqueDocs = new Set<string>();
     const results: any[] = [];
-    console.time("SearchLoopTime");
-    console.log("Search Query Length", querySnapshot.docs.length);
     for (const doc of querySnapshot.docs) {
       const data =
         doc.data() as FirestoreSearchEngineIndexesProps["returnedFields"] & {
-          search_keywords: string[];
+          vectors: string[];
         };
       const uniqueId = data.indexedDocumentPath;
       if (!uniqueDocs.has(uniqueId)) {
@@ -70,10 +75,8 @@ export class Search {
         results.push(data);
       }
     }
-    console.timeEnd("SearchLoopTime");
     const ranked = fse_rankResults(results, fieldValue);
     const topResults = ranked;
-    console.timeEnd("Search Execution Time");
     return topResults;
   }
 }
