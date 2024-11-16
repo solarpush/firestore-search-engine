@@ -22,6 +22,7 @@ import { fse_vectorizeText } from "../shared/vectorize";
 export class Search {
   wordMinLength: number;
   wordMaxLength: number;
+  distanceThreshold: number;
   constructor(
     private readonly firestoreInstance: Firestore,
     private readonly config: FirestoreSearchEngineConfig,
@@ -40,6 +41,29 @@ export class Search {
     } else {
       this.wordMinLength = this.config.wordMinLength;
     }
+    if (
+      this.props.distanceThreshold !== undefined &&
+      typeof this.props.distanceThreshold === "number" &&
+      this.props.distanceThreshold > 0 &&
+      this.props.distanceThreshold < 1
+    ) {
+      // Prioritize the value from `props` if it is valid
+      this.distanceThreshold = this.props.distanceThreshold;
+    } else if (
+      this.config.distanceThreshold !== undefined &&
+      typeof this.config.distanceThreshold === "number" &&
+      this.config.distanceThreshold > 0 &&
+      this.config.distanceThreshold < 1
+    ) {
+      // Use the value from `config` if it is valid
+      this.distanceThreshold = this.config.distanceThreshold;
+    } else {
+      // Default
+      console.log({
+        message: "DistanceThreshold must be a float between 0 and 1",
+      });
+      this.distanceThreshold = 0.2;
+    }
   }
   async execute() {
     return await this.search(this.props.fieldValue);
@@ -51,11 +75,12 @@ export class Search {
     const querySnapshot = await this.firestoreInstance
       .collectionGroup(this.config.collection)
       .findNearest({
-        vectorField: "search_keywords",
+        vectorField: "vectors",
         queryVector: queryVector,
         limit: this.props.limit as number,
         distanceMeasure: "COSINE",
-        distanceThreshold: 0.2,
+        distanceThreshold:
+          this.props.distanceThreshold ?? this.distanceThreshold,
         distanceResultField: "distance",
       })
       .get();

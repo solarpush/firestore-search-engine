@@ -93,7 +93,7 @@ export declare class FirestoreSearchEngine {
         documentProps: FirestoreSearchEngineIndexesAllProps;
         documentsToIndexes: FirestoreSearchEngineIndexesProps["returnedFields"][];
     }): Promise<void>;
-    expressWrapper(app: Application, path?: string): Promise<Application>;
+    expressWrapper(app: Application, path?: string, props?: Omit<FirestoreSearchEngineSearchProps, "fieldValue">): Promise<Application>;
     /**
      * Wraps an Express application and adds a route for performing a search.
      * @param {Application} app - The Express application to wrap.
@@ -105,7 +105,7 @@ export declare class FirestoreSearchEngine {
      * const firestoreSearchEngine = new FirestoreSearchEngine(firestoreInstance, fieldValueInstance, config);
      * firestoreSearchEngine.expressWrapper(app, "/api/search");
      */
-    onRequestWrapped(): (request: Request, response: Response<any>) => void | Promise<void>;
+    onRequestWrapped(props?: Omit<FirestoreSearchEngineSearchProps, "fieldValue">): (request: Request, response: Response<any>) => void | Promise<void>;
     /**
      * Wraps a callable function with authentication and search functionality.
      * @param {(auth: CallableRequest["auth"]) => Promise<boolean> | boolean} authCallBack - A callback function to perform authentication.
@@ -127,7 +127,7 @@ export declare class FirestoreSearchEngine {
      *  httpsCallable(searchUserName)({ searchValue: inputValue });
      *  //method: Managed from front package.json file
      */
-    onCallWrapped(authCallBack: (auth: CallableRequest["auth"]) => Promise<boolean> | boolean): (data: CallableRequest) => Promise<FirestoreSearchEngineReturnType>;
+    onCallWrapped(authCallBack: (auth: CallableRequest["auth"]) => Promise<boolean> | boolean, props?: Omit<FirestoreSearchEngineSearchProps, "fieldValue">): (data: CallableRequest) => Promise<FirestoreSearchEngineReturnType>;
     /**
      * Wraps an onDocumentWritten callback function in Firestore.
      * @param {OnDocumentWrittenCallback} onDocumentWrittenCallBack - The callback function to wrap.
@@ -209,4 +209,9 @@ export declare class FirestoreSearchEngine {
     } | {
         [x: string]: string;
     }>>;
+    buildError(error: unknown): {
+        message: string;
+        error: string | object | null;
+        trace: string | undefined;
+    };
 }

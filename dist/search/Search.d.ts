@@ -17,6 +17,7 @@ export declare class Search {
     private readonly props;
     wordMinLength: number;
     wordMaxLength: number;
+    distanceThreshold: number;
     constructor(firestoreInstance: Firestore, config: FirestoreSearchEngineConfig, props: FirestoreSearchEngineSearchProps);
     execute(): Promise<FirestoreSearchEngineReturnType>;
     protected search(fieldValue: string): Promise<FirestoreSearchEngineReturnType>;

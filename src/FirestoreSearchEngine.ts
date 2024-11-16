@@ -147,21 +147,35 @@ export class FirestoreSearchEngine {
       this.config
     ).execute(docProps);
   }
-  async expressWrapper(app: Application, path: string = "/search") {
+  async expressWrapper(
+    app: Application,
+    path: string = "/search",
+    props?: Omit<FirestoreSearchEngineSearchProps, "fieldValue">
+  ) {
     if (!path || !path.startsWith("/"))
       throw new Error("Path must be in the format '/search'");
     app.get(
       `${path}/:searchValue`,
       async (request: Request, response: Response) => {
         const { searchValue } = request.params;
-        if (!searchValue || !searchValue.length || searchValue.length < 3) {
+        if (
+          !searchValue ||
+          typeof searchValue !== "string" ||
+          searchValue.length < (this.config.wordMinLength ?? 3)
+        ) {
+          console.log("WordMinLenght catched");
           response.json([]);
           return;
         }
-        const result = await this.search({
-          fieldValue: searchValue,
-        });
-        response.json(result);
+        try {
+          const result = await this.search({
+            ...props,
+            fieldValue: searchValue,
+          });
+          response.status(200).json(result);
+        } catch (error) {
+          response.status(400).json(this.buildError(error));
+        }
         return;
       }
     );
@@ -179,27 +193,33 @@ export class FirestoreSearchEngine {
    * const firestoreSearchEngine = new FirestoreSearchEngine(firestoreInstance, fieldValueInstance, config);
    * firestoreSearchEngine.expressWrapper(app, "/api/search");
    */
-  onRequestWrapped(): (
-    request: Request,
-    response: Response<any>
-  ) => void | Promise<void> {
+  onRequestWrapped(
+    props?: Omit<FirestoreSearchEngineSearchProps, "fieldValue">
+  ): (request: Request, response: Response<any>) => void | Promise<void> {
     return async (req, res) => {
       const searchValue = req.query.searchValue;
       if (
         !searchValue ||
         typeof searchValue !== "string" ||
-        searchValue.length < 3
+        searchValue.length < (this.config.wordMinLength ?? 3)
       ) {
+        console.log("WordMinLenght catched");
         res.json([]);
         return;
       }
-      const result = await this.search({
-        fieldValue: searchValue,
-      });
-      res.json(result);
+      try {
+        const result = await this.search({
+          ...props,
+          fieldValue: searchValue,
+        });
+        res.status(200).json(result);
+      } catch (error) {
+        res.status(400).json(this.buildError(error));
+      }
       return;
     };
   }
+
   /**
    * Wraps a callable function with authentication and search functionality.
    * @param {(auth: CallableRequest["auth"]) => Promise<boolean> | boolean} authCallBack - A callback function to perform authentication.
@@ -222,7 +242,8 @@ export class FirestoreSearchEngine {
    *  //method: Managed from front package.json file
    */
   onCallWrapped(
-    authCallBack: (auth: CallableRequest["auth"]) => Promise<boolean> | boolean
+    authCallBack: (auth: CallableRequest["auth"]) => Promise<boolean> | boolean,
+    props?: Omit<FirestoreSearchEngineSearchProps, "fieldValue">
   ): (data: CallableRequest) => Promise<FirestoreSearchEngineReturnType> {
     return async ({ data, auth }) => {
       if (authCallBack) {
@@ -234,14 +255,21 @@ export class FirestoreSearchEngine {
       if (
         !searchValue ||
         typeof searchValue !== "string" ||
-        searchValue.length < 3
+        searchValue.length < (this.config.wordMinLength ?? 3)
       ) {
+        console.log("WordMinLenght catched");
         return [];
       }
-      const result = await this.search({
-        fieldValue: searchValue,
-      });
-      return result;
+      try {
+        const result = await this.search({
+          ...props,
+          fieldValue: searchValue,
+        });
+        return result;
+      } catch (error) {
+        const err = this.buildError(error);
+        throw new HttpsError("aborted", err.message, err);
+      }
     };
   }
 
@@ -416,5 +444,16 @@ export class FirestoreSearchEngine {
         return;
       }
     );
+  }
+
+  buildError(error: unknown) {
+    const trace = new Error().stack;
+    const message =
+      "An error was ocured at search endpoint for " +
+      this.config.collection +
+      "path collection.";
+
+    const errors = typeof error === "object" ? error : JSON.stringify(error);
+    return { message, error: errors, trace };
   }
 }

@@ -25,7 +25,12 @@ This is a powerful and flexible search engine server for Firestore. This package
 
 ---
 
-**<span style="color: red">Warning:</span>** add the model is injected in /src/cache for the first call is download. For cloud functions implementation on prod it's recommended to create a separated repository and a new firebase init with only this function and the model in src/cache folder in the same firebase project. This is because the model is large(80+Mb) and can cause deployment issues and cost if it is included in the main repository.
+**<span style="color: red">Warning:</span>** add the model is injected in /src/cache for the first call is download.
+**You need to generate cache in emulator before deploying**
+GCP not Allow container to write in functions folder
+Also you can fork the repo and re-build with another path in /tmp if you have minInstances deployed and you not need cold start and scaling.
+
+For cloud functions implementation on prod it's recommended to create a separated repository and a new firebase init with only this function and the model in src/cache folder in the same firebase project. This is because the model is large(80+Mb) and can cause deployment issues and cost if it is included in the main repository.
 
 Also upgrade memory of cloud functions from 256MB to 512MB or 1GB for better performances and avoid out of memory errors.
 
@@ -67,6 +72,8 @@ export const searchEngineUserName = new FirestoreSearchEngine(firestore(), {
   collection: "YourCollectionName", // or sub collection is "YourCollectionName/YourDocumentName/YourSubCollectionName"
   wordMaxLength: 100, //optional default 100
   wordMinLength: 3, //optional default 3
+  distanceThreshold: 0.155 /*GLOBAL Specifies the threshold for distance calculation.  
+  The value must be a floating-point number between 0 (exclusive) and 1 (exclusive).*/,
 }); //not change config after indexing or re-indexe all befor use the search feature
 
 //you can provide other searchEngine for each collection you want indexing with another collectionValue
@@ -113,6 +120,8 @@ Finally, execute the search operation:
 ```javascript
 const results = await searchEngineUserName.search({
   fieldValue: inputField,
+  distanceThreshold: 0.155 /*OVERRIDE GLOBAL Specifies the threshold for distance calculation.  The value must be a floating-point number between 0 (exclusive) and 1 (exclusive).*/,
+  limit: 10 /*Limit of documents returnedin response*/,
 }); //That will return all document information who are saved in dexed values
 ```
 
@@ -128,7 +137,10 @@ Below is a complete usage example of the Firestore Search Engine Package:
 // index.ts
 import { FirestoreSearchEngine } from "firestore-search-engine";
 const app = express();
-searchEngineUserName.expressWrapper(app); //add optional second parmateters to change the default path "/search" to your custom path
+searchEngineUserName.expressWrapper(app, "/search/user/name", {
+  distanceThreshold: 0.155 /*OVERRIDE GLOBAL Specifies the threshold for distance calculation.  The value must be a floating-point number between 0 (exclusive) and 1 (exclusive).*/,
+  limit: 10 /*Limit of documents returnedin response*/,
+}); //add optional second parmateters to change the default path "/search" to your custom path
 //url :`yourBaseUrl/search/${inputValue}`
 //method :GET
 ```
@@ -140,7 +152,10 @@ import { FirestoreSearchEngine } from "firestore-search-engine";
 
 export const searchUserName = onRequest(
   { region: "europe-west3" },
-  searchEngineUserName.onRequestWrapped()
+  searchEngineUserName.onRequestWrapped({
+    distanceThreshold: 0.155 /*OVERRIDE GLOBAL Specifies the threshold for distance calculation.  The value must be a floating-point number between 0 (exclusive) and 1 (exclusive).*/,
+    limit: 10 /*Limit of documents returnedin response*/,
+  })
 );
 //url :`yourBaseUrl/functionName/search?searchValue=${inputValue}`
 //method :GET
@@ -157,7 +172,10 @@ const authCallback = (auth: CallableRequest["auth"]) => {
 };
 export const onCallSearchWrapped = onCall(
   { region: "europe-west3" },
-  searchEngineUserName.onCallWrapped(authCallback)
+  searchEngineUserName.onCallWrapped(authCallback, {
+    distanceThreshold: 0.155 /*OVERRIDE GLOBAL Specifies the threshold for distance calculation.  The value must be a floating-point number between 0 (exclusive) and 1 (exclusive).*/,
+    limit: 10 /*Limit of documents returnedin response*/,
+  })
 );
 //in Front-end callableFunction call with :
 //
@@ -208,3 +226,11 @@ export const firestoreDeleted = searchEngineUserName.onDocumentDeletedWrapper(
 Firestore is a powerful, serverless solution provided by Google Cloud Platform for your data storage needs. Yet it does not come with a full-text search feature. Firestore Search Engine package gives you the ability to provide your application with a powerful search feature without significant coding effort. With its easy configuration and extensive documentation, the Firestore Search Engine package is a great choice for empowering your Firestore-based applications with full-text search capabilities.
 
 Please read our documentation carefully to understand how to best utilise Firestore Search Engine in your project and feel free to raise any issues or feature requests.
+
+## Next Steps
+
+- Fix types for cjs types
+- Add support of GPU (cuda)
+- Add metrics in stress test in GCP
+- Rewrite handler in Go and start build-in Firestore extenssion from fields configurations
+- Use onnxruntime directly without dependency (fastembeded)

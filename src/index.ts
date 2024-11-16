@@ -34,6 +34,12 @@ export type FirestoreSearchEngineSearchProps = {
    * The number of result returned (they are sorted by proximity).
    */
   limit?: number;
+  /**
+   * The Accepted distance for angular COSINE vectors find.
+   * Values: Float  > 0 && < 1
+   * Default: 0.2
+   */
+  distanceThreshold?: number;
 };
 
 /**
@@ -44,6 +50,12 @@ export type FirestoreSearchEngineConfig = {
    * The collection.
    */
   collection: string;
+  /**
+   * The Accepted distance for angular COSINE vectors find.
+   * Values: Float  > 0 && < 1
+   * Default: 0.2
+   */
+  distanceThreshold?: number;
   /**
    * The minimum length of the word (optional) default 3.
    */

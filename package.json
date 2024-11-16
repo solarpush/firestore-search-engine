@@ -1,6 +1,6 @@
 {
   "name": "firestore-search-engine",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "type": "module",
   "description": "Firestore Search Engine is a powerful helper library for enhancing search functionality in Firestore. Designed to handle misspellings, prefixes, and phonetic matching, this package generates multiple search variations for optimized approximate search results within Firestore.",
   "main": "dist/index.cjs",
@@ -46,7 +46,6 @@
     "firebase-functions": "^6.1.0"
   },
   "devDependencies": {
-    "@esbuild/linux-x64": "^0.24.0",
     "@rollup/plugin-terser": "^0.4.4",
     "@rollup/plugin-typescript": "^12.1.1",
     "@types/express": "^5.0.0",
