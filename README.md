@@ -115,6 +115,45 @@ await searchEngineUserName.indexes({
 });
 ```
 
+**IMPORTANT**
+Before the search use you need to create indexes the search functions throw in http 400 with error.code = 9 and details including the custom command to deploy the normalized index field :
+[Install gcloud](https://cloud.google.com/sdk/docs/install?hl=fr)
+[Configure gcloud](https://cloud.google.com/sdk/docs/initializing?hl=fr)
+
+Or in your [GCP console](https://console.cloud.google.com/) open cloud shell
+
+```json
+{
+  "code": 9,
+  "details": "Missing vector index configuration. Please create the required index with the following gcloud command:
+  gcloud firestore indexes composite create --collection-group=<YourCollectionConfig> --query-scope=COLLECTION_GROUP --field-config=field-path=vectors,vector-config='{"dimension":384,"flat": {}}'",
+  "metadata": {
+    ...
+  }
+}
+//just copy command and use in terminal after gloud login and project select
+
+//Or add in your firestore.indexes.json
+"indexes": [
+  //...oldIndexes,
+    {
+      "collectionGroup": "<YourCollectionConfig>",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "vectors",//required
+          "vectorConfig": {
+            "dimension": 384,
+            "flat": {}
+          }
+        }
+      ]
+    }
+  ],
+
+  //and deploy
+```
+
 Finally, execute the search operation:
 
 ```javascript

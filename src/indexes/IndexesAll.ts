@@ -82,8 +82,9 @@ export class IndexesAll {
     const bulk = this.firestoreInstance.bulkWriter();
     let bulkCount = 0;
     for (const document of bulkData) {
-      if (bulkCount % 1000 === 0) {
+      if (bulkCount > 500) {
         await bulk.flush();
+        bulkCount = 0;
       }
       await this.cleanOldIndexes(document.returnedFields, bulk, bulkCount);
       bulk.create(
@@ -94,9 +95,9 @@ export class IndexesAll {
         }
       );
       bulkCount++;
-      if (bulkCount > 1500) {
+      if (bulkCount > 500) {
         await bulk.flush();
-        bulkCount++;
+        bulkCount = 0;
       }
     }
     await bulk.close();
@@ -116,7 +117,10 @@ export class IndexesAll {
     for (let j = 0; j < query.docs.length; j++) {
       bulk.delete(query.docs[j].ref);
       bulkCount++;
-      if (bulkCount > 1500) await bulk.flush();
+      if (bulkCount > 500) {
+        await bulk.flush();
+        bulkCount = 0;
+      }
     }
     return;
   }
