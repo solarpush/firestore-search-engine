@@ -1,0 +1,101 @@
+export const names = [
+  // mêmes noms exacts
+  { a: "Pierre Nicolas", b: "Pierre Nicolas", score: 5 },
+  { a: "Jean Dupont", b: "Jean Dupont", score: 5 },
+  { a: "Sophie Martin", b: "Sophie Martin", score: 5 },
+  { a: "Ahmed Benali", b: "Ahmed Benali", score: 5 },
+  { a: "Maria Lopez", b: "Maria Lopez", score: 5 },
+
+  // prénoms proches / variations orthographiques
+  { a: "Jean", b: "Jeanne", score: 2 },
+  { a: "Marc", b: "Mark", score: 4 },
+  { a: "Sofia", b: "Sophia", score: 4 },
+  { a: "Elisabeth", b: "Elizabeth", score: 4 },
+  { a: "Mohamed", b: "Muhammad", score: 4 },
+  { a: "Catherine", b: "Katherine", score: 4 },
+  { a: "Philip", b: "Philippe", score: 4 },
+  { a: "Jon", b: "John", score: 4 },
+  { a: "Cristina", b: "Christina", score: 4 },
+  { a: "Stephan", b: "Steven", score: 3 },
+  { a: "Georges", b: "George", score: 4 },
+
+  // prénoms et noms similaires
+  { a: "Julien Martin", b: "Julian Martin", score: 4 },
+  { a: "Thomas Dupont", b: "Tomas Dupond", score: 3 },
+  { a: "André Durand", b: "Andre Durand", score: 4 },
+  { a: "Lucie Bernard", b: "Lucy Bernard", score: 4 },
+  { a: "Hassan Ali", b: "Hussein Ali", score: 3 },
+  { a: "Paolo Rossi", b: "Paula Rossi", score: 2 },
+  { a: "Laura Garcia", b: "Lara Garcia", score: 4 },
+  { a: "Olivier Petit", b: "Oliver Petit", score: 4 },
+  { a: "François Dupuis", b: "Francis Dupuis", score: 3 },
+
+  // totalement différents
+  { a: "Alice", b: "Mohammed", score: 0 },
+  { a: "Claire Durand", b: "Ahmed Benali", score: 0 },
+  { a: "Julien Dubois", b: "Fatima Zahra", score: 0 },
+  { a: "Carlos Mendez", b: "Akira Tanaka", score: 0 },
+  { a: "Emily Johnson", b: "Chen Wei", score: 0 },
+  { a: "David Smith", b: "Amir Khan", score: 0 },
+  { a: "Anna Kowalski", b: "Youssef Haddad", score: 0 },
+  { a: "Hiroshi Yamamoto", b: "Maria Gonzalez", score: 0 },
+  { a: "Giovanni Bianchi", b: "Sara Ahmed", score: 0 },
+  { a: "Mehmet Kaya", b: "Sophia Rossi", score: 0 },
+
+  // mêmes prénoms mais noms différents
+  { a: "Pierre Nicolas", b: "Pierre Dupont", score: 3 },
+  { a: "Marie Curie", b: "Marie Dupont", score: 3 },
+  { a: "Jean Martin", b: "Jean Bernard", score: 3 },
+  { a: "Ahmed Ali", b: "Ahmed Hassan", score: 3 },
+  { a: "Laura Dubois", b: "Laura Petit", score: 3 },
+  { a: "David Johnson", b: "David Smith", score: 3 },
+  { a: "Fatima Zahra", b: "Fatima Ali", score: 3 },
+  { a: "Thomas Muller", b: "Thomas Schneider", score: 3 },
+  { a: "Sophia Lopez", b: "Sophia Garcia", score: 3 },
+
+  // inversions prénom/nom
+  { a: "Nicolas Pierre", b: "Pierre Nicolas", score: 4 },
+  { a: "Dupont Marie", b: "Marie Dupont", score: 4 },
+  { a: "Ali Ahmed", b: "Ahmed Ali", score: 4 },
+  { a: "Garcia Laura", b: "Laura Garcia", score: 4 },
+  { a: "Smith David", b: "David Smith", score: 4 },
+  { a: "Johnson Emily", b: "Emily Johnson", score: 4 },
+  { a: "Lopez Maria", b: "Maria Lopez", score: 4 },
+  { a: "Martin Julien", b: "Julien Martin", score: 4 },
+
+  // fautes de frappe courantes
+  { a: "Sophie", b: "Sopihe", score: 4 },
+  { a: "Nicolas", b: "Nicoals", score: 4 },
+  { a: "Jonathan", b: "Jonathna", score: 4 },
+  { a: "Christophe", b: "Chirstophe", score: 4 },
+  { a: "Isabelle", b: "Isabell", score: 4 },
+  { a: "Benjamin", b: "Benjmain", score: 4 },
+  { a: "Clement", b: "Clemnt", score: 4 },
+  { a: "Florian", b: "Florain", score: 4 },
+  { a: "Juliette", b: "Julliete", score: 4 },
+  { a: "Alexandre", b: "Aleaxndre", score: 4 },
+
+  // diminutifs / prénoms courts
+  { a: "Alexander", b: "Alex", score: 3 },
+  { a: "Benjamin", b: "Ben", score: 3 },
+  { a: "Nicholas", b: "Nick", score: 3 },
+  { a: "William", b: "Will", score: 3 },
+  { a: "Matthew", b: "Matt", score: 3 },
+  { a: "Jonathan", b: "Jon", score: 3 },
+  { a: "Christopher", b: "Chris", score: 3 },
+  { a: "Daniel", b: "Dan", score: 3 },
+  { a: "Michael", b: "Mike", score: 3 },
+  { a: "Thomas", b: "Tom", score: 3 },
+
+  // noms fréquents
+  { a: "Jean Dupont", b: "Pierre Dupont", score: 2 },
+  { a: "Marie Martin", b: "Sophie Martin", score: 2 },
+  { a: "David Smith", b: "John Smith", score: 2 },
+  { a: "Emily Johnson", b: "Sarah Johnson", score: 2 },
+  { a: "Ahmed Ali", b: "Omar Ali", score: 2 },
+  { a: "Maria Lopez", b: "Carlos Lopez", score: 2 },
+  { a: "Anna Schmidt", b: "Peter Schmidt", score: 2 },
+  { a: "Hiroshi Tanaka", b: "Kenji Tanaka", score: 2 },
+  { a: "Giulia Rossi", b: "Marco Rossi", score: 2 },
+  { a: "Fatima Ahmed", b: "Amina Ahmed", score: 2 },
+];

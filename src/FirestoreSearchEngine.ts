@@ -19,7 +19,7 @@ import type {
 import { Indexes } from "./indexes/Indexes";
 import { IndexesAll } from "./indexes/IndexesAll";
 import { Search } from "./search/Search";
-import { getDiffFromUpdatedData } from "./shared/getDiffFromDocumentUpdate";
+import { deepDiff } from "./utils/objects/deepDiff";
 /**
  * Configures the Firestore instance and throws an error if a necessary
  * condition (collection name being a non-empty string) is not satisfied.
@@ -47,8 +47,21 @@ export class FirestoreSearchEngine {
     private readonly config: FirestoreSearchEngineConfig,
     private readonly fieldValueInstance: typeof firestore.FieldValue
   ) {
-    //Configure Firestore for never throw if undefined value
-    this.firestoreInstance.settings({ ignoreUndefinedProperties: true });
+    // Configure Firestore seulement si demandé et si ce n'est pas déjà fait
+    if (!this.config.skipFirestoreSettings) {
+      try {
+        this.firestoreInstance.settings({ ignoreUndefinedProperties: true });
+      } catch (error) {
+        // Firestore déjà configuré, on ignore l'erreur
+        if (
+          error instanceof Error &&
+          !error.message.includes("already been initialized")
+        ) {
+          throw error;
+        }
+      }
+    }
+
     if (this.config.collection.length < 1)
       throw new Error(
         "collectionName is required and must be a non-empty string."
@@ -109,6 +122,31 @@ export class FirestoreSearchEngine {
       this.config,
       props
     ).execute();
+  }
+
+  /**
+   * Supprime les index d'un champ spécifique dans la collection Firestore configurée.
+   *
+   * @param {FirestoreSearchEngineIndexesProps} props - Objet contenant les détails du champ à désindexer et les champs retournés.
+   * @returns {Promise<any>} Une promesse qui résout le résultat de l'opération de suppression d'index.
+   * @throws {Error} Si le champ d'entrée (inputField) est une chaîne vide ou non définie.
+   *
+   * @example
+   * await firestoreSearchEngine.removeIndexes({
+   *   inputField: 'nom',
+   *   returnedFields: { indexedDocumentPath: 'chemin/vers/document' }
+   * });
+   */
+  async removeIndexes(props: FirestoreSearchEngineIndexesProps) {
+    if (typeof props.inputField !== "string" || props.inputField.length === 0) {
+      throw new Error("fieldValue is required and must be a non-empty string.");
+    }
+    return await new Indexes(
+      this.firestoreInstance,
+      this.fieldValueInstance,
+      this.config,
+      props
+    ).remove();
   }
 
   /**
@@ -198,23 +236,37 @@ export class FirestoreSearchEngine {
   ): (request: Request, response: Response<any>) => void | Promise<void> {
     return async (req, res) => {
       const searchValue = req.query.searchValue;
+
+      console.log(`🔍 Search request received:`, {
+        searchValue,
+        collection: this.config.collection,
+        queryParams: req.query,
+        wordMinLength: this.config.wordMinLength ?? 3,
+      });
+
       if (
         !searchValue ||
         typeof searchValue !== "string" ||
         searchValue.length < (this.config.wordMinLength ?? 3)
       ) {
-        console.log("WordMinLenght catched");
+        console.log("WordMinLength catched - returning empty array");
         res.json([]);
         return;
       }
+
       try {
+        console.log(`🚀 Starting search for: "${searchValue}"`);
         const result = await this.search({
           ...props,
           fieldValue: searchValue,
         });
+        console.log(`✅ Search completed, found ${result.length} results`);
         res.status(200).json(result);
       } catch (error) {
-        res.status(400).json(this.buildError(error));
+        console.error(`❌ Search error:`, error);
+        const errorResponse = this.buildError(error);
+        console.error(`📝 Error response:`, errorResponse);
+        res.status(400).json(errorResponse);
       }
       return;
     };
@@ -369,10 +421,26 @@ export class FirestoreSearchEngine {
       { ...eventHandlerOptions, document: documentsPath },
       async (event) => {
         if (!event.data) return;
-        const { changes, after } = getDiffFromUpdatedData<{
-          [key: string]: any;
-        }>(event.data);
+        const { changes, after, deleted } = deepDiff(
+          event.data.before.data() || {},
+          event.data.after.data() || {}
+        );
         const updatedFieldValue = changes[documentProps.indexedKey];
+        const deletedFieldValue = deleted[documentProps.indexedKey];
+        if (deletedFieldValue && typeof deletedFieldValue === "string") {
+          try {
+            await this.removeIndexes({
+              ...props,
+              inputField: deletedFieldValue,
+              returnedFields: {
+                indexedDocumentPath: event.data.after.ref.path,
+              },
+            });
+          } catch (error) {
+            console.error(error);
+            return;
+          }
+        }
         const returnedFields: Record<string, any> = {};
         for (const key of documentProps.returnedKey) {
           if (after[key] || after[key] === 0) {
@@ -451,9 +519,27 @@ export class FirestoreSearchEngine {
     const message =
       "An error was ocured at search endpoint for " +
       this.config.collection +
-      "path collection.";
+      " collection.";
 
-    const errors = typeof error === "object" ? error : JSON.stringify(error);
-    return { message, error: errors, trace };
+    let errorDetails: any;
+    if (error instanceof Error) {
+      errorDetails = {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      };
+    } else if (typeof error === "object" && error !== null) {
+      errorDetails = error;
+    } else {
+      errorDetails = { rawError: String(error) };
+    }
+
+    return {
+      message,
+      error: errorDetails,
+      trace,
+      timestamp: new Date().toISOString(),
+      collection: this.config.collection,
+    };
   }
 }

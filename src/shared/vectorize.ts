@@ -11,6 +11,11 @@ async function getEmbeddingModel(maxLength: number): Promise<FlagEmbedding> {
   if (!embeddingModel) {
     embeddingModel = await FlagEmbedding.init({
       model: EmbeddingModel.AllMiniLML6V2,
+      // modelAbsoluteDirPath: path.resolve(
+      //   getDirname(import.meta.url),
+      //   "../cache/custom"
+      // ),
+      // modelName: "model_quint8_avx2.onnx",
       cacheDir: "src/cache",
       executionProviders: [ExecutionProvider.CPU],
       maxLength: maxLength,

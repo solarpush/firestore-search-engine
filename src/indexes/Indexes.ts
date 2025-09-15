@@ -50,6 +50,12 @@ export class Indexes {
     );
     return await this.saveWithLimitedKeywords(this.props.returnedFields, typos);
   }
+  async remove() {
+    const bulk = this.firestoreInstance.bulkWriter();
+    await this.cleanOldIndexes(this.props.returnedFields, bulk);
+    await bulk.close();
+    return;
+  }
 
   protected async saveWithLimitedKeywords(
     returnedFields: FirestoreSearchEngineIndexesProps["returnedFields"],
@@ -62,6 +68,7 @@ export class Indexes {
       this.firestoreInstance.collection(this.config.collection).doc(),
       {
         vectors: this.fieldValueInstance.vector(keywords),
+        fieldValue: this.props.inputField.toLowerCase(), // ✅ Ajouter le texte original pour le ranking
         ...returnedFields,
       }
     );

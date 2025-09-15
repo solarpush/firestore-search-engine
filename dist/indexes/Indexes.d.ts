@@ -25,6 +25,7 @@ export declare class Indexes {
     wordMaxLength: number;
     constructor(firestoreInstance: firestore.Firestore, fieldValueInstance: typeof firestore.FieldValue, config: FirestoreSearchEngineConfig, props: FirestoreSearchEngineIndexesProps);
     execute(): Promise<void>;
+    remove(): Promise<void>;
     protected saveWithLimitedKeywords(returnedFields: FirestoreSearchEngineIndexesProps["returnedFields"], keywords: number[]): Promise<void>;
     protected cleanOldIndexes(returnedFields: FirestoreSearchEngineIndexesProps["returnedFields"], bulk: BulkWriter): Promise<void>;
 }

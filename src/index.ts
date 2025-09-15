@@ -3,9 +3,35 @@
  */
 export type FirestoreSearchEngineIndexesProps = {
   /**
-   * The input field.
+   * The input field(s) to index.
+   * Can be a single field name or multiple fields for batch indexing.
    */
-  inputField: string;
+  inputField: string | string[] | { [fieldName: string]: { weight?: number } };
+  /**
+   * The returned fields.
+   */
+  returnedFields: { indexedDocumentPath: string } & Record<string, any>;
+};
+
+/**
+ * TypeScript type for multi-field indexing properties
+ */
+export type FirestoreSearchEngineMultiIndexesProps = {
+  /**
+   * Multiple fields to index with optional configuration
+   */
+  inputFields: {
+    [fieldName: string]: {
+      /**
+       * Weight for this field in search relevance (optional, default: 1)
+       */
+      weight?: number;
+      /**
+       * Whether to enable fuzzy search for this field (optional, default: true)
+       */
+      fuzzySearch?: boolean;
+    };
+  };
   /**
    * The returned fields.
    */
@@ -13,11 +39,31 @@ export type FirestoreSearchEngineIndexesProps = {
 };
 export type FirestoreSearchEngineIndexesAllProps = {
   /**
-   * The key you want to indexe for search by this key.
+   * The key(s) you want to index for search.
+   * Can be a single key or multiple keys for batch indexing.
    */
-  indexedKey: string;
+  indexedKey: string | string[] | { [fieldName: string]: { weight?: number } };
   /**
-   * An Array on object key you want to be returned indexe collection.
+   * An Array of object keys you want to be returned from index collection.
+   */
+  returnedKey: string[];
+};
+
+/**
+ * TypeScript type for multi-field batch indexing
+ */
+export type FirestoreSearchEngineMultiIndexesAllProps = {
+  /**
+   * Multiple keys to index with batch processing
+   */
+  indexedKeys: {
+    [fieldName: string]: {
+      weight?: number;
+      fuzzySearch?: boolean;
+    };
+  };
+  /**
+   * An Array of object keys you want to be returned from index collection.
    */
   returnedKey: string[];
 };
@@ -27,19 +73,58 @@ export type FirestoreSearchEngineIndexesAllProps = {
  */
 export type FirestoreSearchEngineSearchProps = {
   /**
-   * The field value.
+   * The field value to search for.
    */
   fieldValue: string;
   /**
-   * The number of result returned (they are sorted by proximity).
+   * Specific field to search in (optional, if not provided searches in all indexed fields)
+   */
+  searchField?: string;
+  /**
+   * The number of results returned (they are sorted by proximity).
    */
   limit?: number;
   /**
-   * The Accepted distance for angular COSINE vectors find.
-   * Values: Float  > 0 && < 1
+   * The accepted distance for angular COSINE vectors find.
+   * Values: Float > 0 && < 1
    * Default: 0.2
    */
   distanceThreshold?: number;
+  /**
+   * Weights for different fields when searching across multiple fields
+   */
+  fieldWeights?: { [fieldName: string]: number };
+};
+
+/**
+ * TypeScript type for multi-field search properties
+ */
+export type FirestoreSearchEngineMultiSearchProps = {
+  /**
+   * The search query
+   */
+  query: string;
+  /**
+   * Fields to search in with their weights
+   */
+  searchFields?: {
+    [fieldName: string]: {
+      weight?: number;
+      boost?: number;
+    };
+  };
+  /**
+   * The number of results returned (they are sorted by relevance).
+   */
+  limit?: number;
+  /**
+   * The accepted distance threshold for each field
+   */
+  distanceThreshold?: number;
+  /**
+   * Global distance thresholds per field
+   */
+  fieldThresholds?: { [fieldName: string]: number };
 };
 
 /**
@@ -64,6 +149,11 @@ export type FirestoreSearchEngineConfig = {
    * The maximum length of the word (optional) default 50.
    */
   wordMaxLength?: number;
+  /**
+   * Skip Firestore settings configuration (useful when Firestore is already initialized)
+   * Default: false
+   */
+  skipFirestoreSettings?: boolean;
 };
 
 export type FirestoreSearchEngineReturnType = {
@@ -84,3 +174,64 @@ export type PathWithSubCollectionsMaxDepth4 =
  * Exports FirestoreSearchEngine module
  */
 export { FirestoreSearchEngine } from "./FirestoreSearchEngine";
+
+/**
+ * Exports Cloud Functions Management modules
+ */
+export { CloudFunctionsManager } from "./CloudFunctionsManager";
+export type {
+  AutoExports,
+  CloudFunctionsConfig,
+  FirebaseFunctionsHost,
+  GeneratedFunctions,
+  SearchEngineInstanceConfig,
+} from "./CloudFunctionsManager";
+
+/**
+ * Exports Configuration Types
+ */
+export type {
+  AdvancedCloudFunctionsConfig,
+  AdvancedSearchEngineInstanceConfig,
+  AuthCallback,
+  AuthMiddleware,
+  ConfigFactory,
+  ExpressConfig,
+  SearchApiConfig,
+  SearchEnginesInputConfig,
+} from "./ConfigTypes";
+
+/**
+ * Exports Configuration Loader Sync (synchrone - RECOMMANDÉ)
+ */
+export {
+  loadAndValidateConfigSync,
+  loadConfigFromModule,
+  loadConfigSync,
+  validateConfig,
+} from "./ConfigLoaderSync";
+
+/**
+ * Exports Configuration Debugger
+ */
+export { ConfigDebugger } from "./ConfigDebugger";
+
+/**
+ * Exports Function Extraction Utilities
+ */
+export {
+  createSelectiveExport,
+  extractCallableFunctions,
+  extractHttpFunctions,
+  extractInstanceFunctions,
+  extractTriggerFunctions,
+} from "./FunctionExtractor";
+
+/**
+ * Exports Firebase Functions Helpers
+ */
+export {
+  createCustomFirebaseFunctionsHost,
+  createFirebaseFunctionsHost,
+  createMockFirebaseFunctionsHost,
+} from "./FirebaseFunctionsHelper";

@@ -93,6 +93,7 @@ export class Search {
       const data =
         doc.data() as FirestoreSearchEngineIndexesProps["returnedFields"] & {
           vectors: string[];
+          fieldValue: string; // ✅ Ajouter fieldValue au type
         };
       const uniqueId = data.indexedDocumentPath;
       if (!uniqueDocs.has(uniqueId)) {

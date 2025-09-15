@@ -64,6 +64,11 @@ export type FirestoreSearchEngineConfig = {
      * The maximum length of the word (optional) default 50.
      */
     wordMaxLength?: number;
+    /**
+     * Skip Firestore settings configuration (useful when Firestore is already initialized)
+     * Default: false
+     */
+    skipFirestoreSettings?: boolean;
 };
 export type FirestoreSearchEngineReturnType = {
     [x: string]: any;
@@ -74,3 +79,28 @@ export type PathWithSubCollectionsMaxDepth4 = `${string}/{${string}}` | `${strin
  * Exports FirestoreSearchEngine module
  */
 export { FirestoreSearchEngine } from "./FirestoreSearchEngine";
+/**
+ * Exports Cloud Functions Management modules
+ */
+export { CloudFunctionsManager } from "./CloudFunctionsManager";
+export type { AutoExports, CloudFunctionsConfig, FirebaseFunctionsHost, GeneratedFunctions, SearchEngineInstanceConfig, } from "./CloudFunctionsManager";
+/**
+ * Exports Configuration Types
+ */
+export type { AdvancedCloudFunctionsConfig, AdvancedSearchEngineInstanceConfig, AuthCallback, AuthMiddleware, ConfigFactory, ExpressConfig, SearchApiConfig, SearchEnginesInputConfig, } from "./ConfigTypes";
+/**
+ * Exports Configuration Loader Sync (synchrone - RECOMMANDÉ)
+ */
+export { loadAndValidateConfigSync, loadConfigFromModule, loadConfigSync, validateConfig, } from "./ConfigLoaderSync";
+/**
+ * Exports Configuration Debugger
+ */
+export { ConfigDebugger } from "./ConfigDebugger";
+/**
+ * Exports Function Extraction Utilities
+ */
+export { createSelectiveExport, extractCallableFunctions, extractHttpFunctions, extractInstanceFunctions, extractTriggerFunctions, } from "./FunctionExtractor";
+/**
+ * Exports Firebase Functions Helpers
+ */
+export { createCustomFirebaseFunctionsHost, createFirebaseFunctionsHost, createMockFirebaseFunctionsHost, } from "./FirebaseFunctionsHelper";

@@ -64,6 +64,20 @@ export declare class FirestoreSearchEngine {
      */
     indexes(props: FirestoreSearchEngineIndexesProps): Promise<void>;
     /**
+     * Supprime les index d'un champ spécifique dans la collection Firestore configurée.
+     *
+     * @param {FirestoreSearchEngineIndexesProps} props - Objet contenant les détails du champ à désindexer et les champs retournés.
+     * @returns {Promise<any>} Une promesse qui résout le résultat de l'opération de suppression d'index.
+     * @throws {Error} Si le champ d'entrée (inputField) est une chaîne vide ou non définie.
+     *
+     * @example
+     * await firestoreSearchEngine.removeIndexes({
+     *   inputField: 'nom',
+     *   returnedFields: { indexedDocumentPath: 'chemin/vers/document' }
+     * });
+     */
+    removeIndexes(props: FirestoreSearchEngineIndexesProps): Promise<void>;
+    /**
      * Indexes all documents in the Firestore database.
      * @param {Object} docProps - The documents to index.
      * @param {FirestoreSearchEngineIndexesAllProps} docProps.documentProps - The properties of the documents to index.
@@ -211,7 +225,9 @@ export declare class FirestoreSearchEngine {
     }>>;
     buildError(error: unknown): {
         message: string;
-        error: string | object | null;
+        error: any;
         trace: string | undefined;
+        timestamp: string;
+        collection: string;
     };
 }
