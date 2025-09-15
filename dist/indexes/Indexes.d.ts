@@ -1,10 +1,9 @@
 import type { BulkWriter } from "@google-cloud/firestore";
 import { firestore } from "firebase-admin";
-import type { FirestoreSearchEngineConfig, FirestoreSearchEngineIndexesProps, FirestoreSearchEngineMultiIndexesProps } from "..";
+import type { FirestoreSearchEngineConfig, FirestoreSearchEngineMultiIndexesProps } from "..";
 /**
- * Enhanced Indexes class that supports both single-field and multi-field indexing
- * Maintains backward compatibility with existing single-field implementation
- * Adds new multi-field batch vectorization capabilities
+ * Unified indexes class for multi-field processing
+ * Supports vectorization of multiple fields with weights and custom storage
  */
 export declare class Indexes {
     private readonly firestoreInstance;
@@ -13,38 +12,35 @@ export declare class Indexes {
     private readonly props;
     wordMinLength: number;
     wordMaxLength: number;
-    private multiIndexer?;
-    constructor(firestoreInstance: firestore.Firestore, fieldValueInstance: typeof firestore.FieldValue, config: FirestoreSearchEngineConfig, props: FirestoreSearchEngineIndexesProps | FirestoreSearchEngineMultiIndexesProps);
+    constructor(firestoreInstance: firestore.Firestore, fieldValueInstance: typeof firestore.FieldValue, config: FirestoreSearchEngineConfig, props: FirestoreSearchEngineMultiIndexesProps);
     /**
-     * Main execution method - routes to appropriate indexing strategy
-     */
-    execute(): Promise<any>;
-    /**
-     * Remove indexes
-     */
-    remove(): Promise<void>;
-    /**
-     * Check if configuration is for multi-field indexing
-     */
-    private isMultiFieldConfig;
-    /**
-     * Traditional single-field execution (backward compatibility)
-     */
-    private executeSingleField;
-    /**
-     * Save with limited keywords (backward compatibility)
-     */
-    protected saveWithLimitedKeywords(returnedFields: FirestoreSearchEngineIndexesProps["returnedFields"], keywords: number[]): Promise<any>;
-    /**
-     * Clean old indexes (backward compatibility)
-     */
-    protected cleanOldIndexes(returnedFields: FirestoreSearchEngineIndexesProps["returnedFields"], bulk: BulkWriter): Promise<void>;
-    /**
-     * New smart indexing method that detects configuration type
+     * Indexes a document with multiple fields using batch vectorization
+     * Creates a single document with multiple _vector_[fieldName] fields
      */
     indexes(): Promise<void>;
     /**
-     * New smart bulk indexing method
+     * Bulk indexes operation for multiple documents
+     * Creates a single document with multiple _vector_[fieldName] fields
      */
     bulkIndexes(bulkWriter: BulkWriter): Promise<void>;
+    /**
+     * Batch vectorization of multiple fields using fastEmbed
+     */
+    private batchVectorize;
+    /**
+     * Delete index for a document
+     */
+    deleteIndex(): Promise<void>;
+    /**
+     * Update index for a document (re-index all fields)
+     */
+    updateIndex(): Promise<void>;
+    /**
+     * Remove indexes (alias for deleteIndex for backward compatibility)
+     */
+    remove(): Promise<void>;
+    /**
+     * Execute method (alias for indexes for backward compatibility)
+     */
+    execute(): Promise<void>;
 }

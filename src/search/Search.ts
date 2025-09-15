@@ -41,28 +41,46 @@ export class Search {
     } else {
       this.wordMinLength = this.config.wordMinLength;
     }
+    // Debug: log the values being checked
+    console.log("🔍 DistanceThreshold Debug:", {
+      "props.distanceThreshold": this.props.distanceThreshold,
+      "props.distanceThreshold type": typeof this.props.distanceThreshold,
+      "config.distanceThreshold": this.config.distanceThreshold,
+      "config.distanceThreshold type": typeof this.config.distanceThreshold,
+    });
+
+    // Priorité: config (instance spécifique) > props (global) > default
     if (
-      this.props.distanceThreshold !== undefined &&
-      typeof this.props.distanceThreshold === "number" &&
-      this.props.distanceThreshold > 0 &&
-      this.props.distanceThreshold < 1
-    ) {
-      // Prioritize the value from `props` if it is valid
-      this.distanceThreshold = this.props.distanceThreshold;
-    } else if (
       this.config.distanceThreshold !== undefined &&
       typeof this.config.distanceThreshold === "number" &&
       this.config.distanceThreshold > 0 &&
       this.config.distanceThreshold < 1
     ) {
-      // Use the value from `config` if it is valid
+      // Use the value from `config` (instance-specific) - HIGHEST priority
       this.distanceThreshold = this.config.distanceThreshold;
+      console.log(
+        `✅ Using config distanceThreshold: ${this.distanceThreshold}`
+      );
+    } else if (
+      this.props.distanceThreshold !== undefined &&
+      typeof this.props.distanceThreshold === "number" &&
+      this.props.distanceThreshold > 0 &&
+      this.props.distanceThreshold < 1
+    ) {
+      // Use the value from `props` (global) - MEDIUM priority
+      this.distanceThreshold = this.props.distanceThreshold;
+      console.log(
+        `✅ Using props distanceThreshold: ${this.distanceThreshold}`
+      );
     } else {
       // Default
       console.log({
         message: "DistanceThreshold must be a float between 0 and 1",
       });
       this.distanceThreshold = 0.2;
+      console.log(
+        `⚠️ Using default distanceThreshold: ${this.distanceThreshold}`
+      );
     }
   }
   async execute() {
@@ -84,7 +102,7 @@ export class Search {
       queryVectorPreview: queryVector.slice(0, 5),
       limit: this.props.limit as number,
       distanceMeasure: "COSINE",
-      distanceThreshold: this.props.distanceThreshold ?? this.distanceThreshold,
+      distanceThreshold: this.distanceThreshold,
       fieldFilter: this.props.fieldFilter,
     });
 
@@ -113,8 +131,7 @@ export class Search {
         queryVector: queryVector,
         limit: this.props.limit as number,
         distanceMeasure: "COSINE",
-        // Remove threshold temporarily to see if any documents match
-        // distanceThreshold: this.props.distanceThreshold ?? this.distanceThreshold,
+        distanceThreshold: this.distanceThreshold,
         distanceResultField: "distance",
       })
       .get();

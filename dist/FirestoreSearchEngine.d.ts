@@ -4,7 +4,7 @@ import { firestore } from "firebase-admin";
 import { CallableRequest } from "firebase-functions/https";
 import type { EventHandlerOptions } from "firebase-functions/options";
 import type { onDocumentCreated, onDocumentDeleted, onDocumentUpdated } from "firebase-functions/v2/firestore";
-import type { FirestoreSearchEngineConfig, FirestoreSearchEngineIndexesAllProps, FirestoreSearchEngineIndexesProps, FirestoreSearchEngineMultiIndexesProps, FirestoreSearchEngineMultiSearchProps, FirestoreSearchEngineReturnType, FirestoreSearchEngineSearchProps, PathWithSubCollectionsMaxDepth4 } from ".";
+import type { FirestoreSearchEngineConfig, FirestoreSearchEngineIndexesAllProps, FirestoreSearchEngineIndexesProps, FirestoreSearchEngineMultiSearchProps, FirestoreSearchEngineReturnType, FirestoreSearchEngineSearchProps, PathWithSubCollectionsMaxDepth4 } from ".";
 /**
  * Configures the Firestore instance and throws an error if a necessary
  * condition (collection name being a non-empty string) is not satisfied.
@@ -46,51 +46,33 @@ export declare class FirestoreSearchEngine {
      */
     search(props: FirestoreSearchEngineSearchProps): Promise<FirestoreSearchEngineReturnType>;
     /**
-     * Configures indexes in the configured Firestore collection to enable efficient query processing.
-     * Indexes in Firestore are set up around an index field and a direction.
-     *
-     * Detailed parameters for index configuration include inputField, returnedFields, and wordMaxLength. The inputField is a string specifying the field
-     * to index, returnedFields is an object specifying the fields to return in search results, and wordMaxLength is an optional
-     * parameter that indicates the maximum length of words to be indexed.
-     *
-     * @example
-     * const firestoreSearchEngine = new FirestoreSearchEngine(firestore(), { collection: 'myCollection' });
-     * await firestoreSearchEngine.indexes({ inputField: 'name', returnedFields: { indexedDocumentPath: 'path/to/document', nameOfAdditionalField: 'value' }, wordMaxLength: 10 });
-     *
-     * @param {FirestoreSearchEngineIndexesProps} props - An object specifying the details of the index configuration.
-     * @throws {Error} If an error is encountered during index creation, the error is thrown.
-     *
-     * For more information and usage examples, refer to the Firestore Search Engine [documentation](https://github.com/solarpush/firestore-search-engine).
+     * Multi-field indexing with batch vectorization
+     * Supports multiple fields with weights and fuzzy search configuration
+     * Stores vectors as _vector_[fieldName] format
      */
-    indexes(props: FirestoreSearchEngineIndexesProps): Promise<any>;
+    indexes(props: FirestoreSearchEngineIndexesProps): Promise<void>;
     /**
-     * Supprime les index d'un champ spécifique dans la collection Firestore configurée.
-     *
-     * @param {FirestoreSearchEngineIndexesProps} props - Objet contenant les détails du champ à désindexer et les champs retournés.
-     * @returns {Promise<any>} Une promesse qui résout le résultat de l'opération de suppression d'index.
-     * @throws {Error} Si le champ d'entrée (inputField) est une chaîne vide ou non définie.
-     *
-     * @example
-     * await firestoreSearchEngine.removeIndexes({
-     *   inputField: 'nom',
-     *   returnedFields: { indexedDocumentPath: 'chemin/vers/document' }
-     * });
+     * Remove multi-field indexes for a document
      */
     removeIndexes(props: FirestoreSearchEngineIndexesProps): Promise<void>;
     /**
      * Indexes all documents in the Firestore database.
      * @param {Object} docProps - The documents to index.
      * @param {FirestoreSearchEngineIndexesAllProps} docProps.documentProps - The properties of the documents to index.
-     * @param {FirestoreSearchEngineIndexesProps['returnedFields'][]} docProps.documentsToIndexes - The fields of the documents to index.
+     * @param {any[]} docProps.documentsToIndexes - The documents to index.
      * @return {Promise<any>} A promise that resolves to the result of the indexing operation.
      * @example
      *   const docProps = {
      *    documentProps: {
-     *        fieldsToIndex: ['title', 'content'],
+     *        indexedKeys: {
+     *          'title': { weight: 1.0, fuzzySearch: true },
+     *          'content': { weight: 0.8, fuzzySearch: true }
+     *        },
+     *        returnedKey: ['id', 'timestamp']
      *     },
      *    documentsToIndexes: [
-     *        { documentId: 'doc1', title: 'Hello World', content: 'This is an example document.' },
-     *        { documentId: 'doc2', title: 'Welcome to my site', content: 'This site contains useful information.' },
+     *        { indexedDocumentPath: 'docs/doc1', title: 'Hello World', content: 'This is an example document.' },
+     *        { indexedDocumentPath: 'docs/doc2', title: 'Welcome to my site', content: 'This site contains useful information.' },
      *     ],
      *  };
      *
@@ -105,19 +87,8 @@ export declare class FirestoreSearchEngine {
      */
     indexesAll(docProps: {
         documentProps: FirestoreSearchEngineIndexesAllProps;
-        documentsToIndexes: FirestoreSearchEngineIndexesProps["returnedFields"][];
+        documentsToIndexes: any[];
     }): Promise<void>;
-    /**
-     * Enhanced indexes method that supports both single-field and multi-field indexing
-     * Detects the input type and routes to appropriate indexing strategy
-     */
-    indexesEnhanced(props: FirestoreSearchEngineIndexesProps | FirestoreSearchEngineMultiIndexesProps): Promise<any>;
-    /**
-     * Multi-field indexing with batch vectorization
-     * Supports multiple fields with weights and fuzzy search configuration
-     * Stores vectors as _vector_[fieldName] format
-     */
-    indexesMultiField(props: FirestoreSearchEngineMultiIndexesProps): Promise<void>;
     /**
      * Search in multiple fields with weighted results
      */
@@ -126,18 +97,6 @@ export declare class FirestoreSearchEngine {
      * Combine and deduplicate multi-field search results
      */
     private combineMultiFieldResults;
-    /**
-     * Bulk multi-field indexing for multiple documents
-     */
-    indexesAllMultiField(docProps: {
-        fieldConfigs: {
-            [fieldName: string]: {
-                weight?: number;
-                fuzzySearch?: boolean;
-            };
-        };
-        documentsToIndexes: any[];
-    }): Promise<void>;
     expressWrapper(app: Application, path?: string, props?: Omit<FirestoreSearchEngineSearchProps, "fieldValue">): Promise<Application>;
     /**
      * Wraps an Express application and adds a route for performing a search.

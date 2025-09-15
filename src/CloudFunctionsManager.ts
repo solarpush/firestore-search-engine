@@ -432,7 +432,9 @@ export class CloudFunctionsManager {
 
       return await engine.indexesAll({
         documentProps: {
-          indexedKey: finalIndexedKey,
+          indexedKeys: {
+            [finalIndexedKey]: { weight: 1.0, fuzzySearch: true },
+          },
           returnedKey: returnedKeys,
         },
         documentsToIndexes: documentsToIndex,

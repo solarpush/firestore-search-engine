@@ -1,15 +1,14 @@
 import type { BulkWriter, Firestore } from "@google-cloud/firestore";
-
 import type { firestore } from "firebase-admin";
-import {
+import type {
   FirestoreSearchEngineConfig,
   FirestoreSearchEngineIndexesAllProps,
-  FirestoreSearchEngineIndexesProps,
 } from "..";
-import { fse_vectorizeText } from "../shared/vectorize";
+import { Indexes } from "./Indexes";
 
 /**
- * Enhanced IndexesAll class that supports both single-field and multi-field bulk indexing
+ * Simplified IndexesAll class that uses the multi-field indexing system
+ * Processes multiple documents in batch using the unified Indexes class
  */
 export class IndexesAll {
   wordMinLength: number;
@@ -25,44 +24,7 @@ export class IndexesAll {
   }
 
   /**
-   * Enhanced execute method that supports both single and multi-field indexing
-   */
-  async execute({
-    documentProps,
-    documentsToIndexes,
-  }: {
-    documentProps: FirestoreSearchEngineIndexesAllProps;
-    documentsToIndexes: FirestoreSearchEngineIndexesProps["returnedFields"][];
-  }) {
-    const readyToBulk: {
-      keywords: number[];
-      returnedFields: FirestoreSearchEngineIndexesProps["returnedFields"];
-    }[] = [];
-
-    for (const { ...element } of documentsToIndexes) {
-      const inputField: string = element[documentProps.indexedKey]; // Maintenant toujours une string
-      const returnedFields: FirestoreSearchEngineIndexesProps["returnedFields"] =
-        {
-          indexedDocumentPath: element.indexedDocumentPath,
-          fieldValue: inputField.toLowerCase(),
-        };
-
-      for (const key of documentProps.returnedKey) {
-        returnedFields[key] = element[key];
-      }
-
-      const vector = await fse_vectorizeText(inputField, this.wordMaxLength);
-      readyToBulk.push({
-        keywords: vector,
-        returnedFields,
-      });
-    }
-
-    return await this.bulkWithLimitedKeywords(readyToBulk);
-  }
-
-  /**
-   * New multi-field bulk execution method
+   * Multi-field bulk execution method
    */
   async executeMultiField({
     documentsToIndexes,
@@ -73,183 +35,97 @@ export class IndexesAll {
       [fieldName: string]: { weight?: number; fuzzySearch?: boolean };
     };
   }) {
-    const readyToBulk: {
-      indexDocument: any;
-      indexedDocumentPath: string;
-    }[] = [];
+    const bulk = this.firestoreInstance.bulkWriter();
+    let processedCount = 0;
 
     for (const element of documentsToIndexes) {
-      const fieldsToVectorize: { [fieldName: string]: string } = {};
+      // Clean old indexes first
+      await this.cleanOldIndexes(element.indexedDocumentPath, bulk);
 
-      // Collect fields to vectorize
-      for (const [fieldName, fieldConfig] of Object.entries(fieldConfigs)) {
-        const fieldValue = element[fieldName];
-        if (fieldValue && typeof fieldValue === "string") {
-          const cleanText = fieldValue.toLowerCase().trim();
-          if (
-            cleanText.length >= this.wordMinLength &&
-            cleanText.length <= this.wordMaxLength
-          ) {
-            fieldsToVectorize[fieldName] = cleanText;
-          }
+      // Create multi-field index for this document
+      const indexer = new Indexes(
+        this.firestoreInstance,
+        this.fieldValueInstance,
+        this.config,
+        {
+          inputFields: fieldConfigs,
+          returnedFields: element,
         }
-      }
-
-      if (Object.keys(fieldsToVectorize).length === 0) {
-        continue; // Skip if no valid fields
-      }
-
-      // Batch vectorize all fields for this document
-      const vectorBatch = await this.batchVectorize(fieldsToVectorize);
-
-      // Prepare index document
-      const indexDocument: any = {
-        ...element,
-        _indexed_at: this.fieldValueInstance.serverTimestamp(),
-        _field_weights: {},
-        _field_configs: {},
-      };
-
-      // Add vectors for each field
-      for (const [fieldName, vector] of Object.entries(vectorBatch)) {
-        const vectorFieldName = `_vector_${fieldName}`;
-        const fieldConfig = fieldConfigs[fieldName];
-
-        indexDocument[vectorFieldName] = this.fieldValueInstance.vector(vector);
-        indexDocument[`${fieldName}_original`] = fieldsToVectorize[fieldName];
-        indexDocument._field_weights[fieldName] = fieldConfig?.weight || 1.0;
-        indexDocument._field_configs[fieldName] = {
-          fuzzySearch: fieldConfig?.fuzzySearch ?? true,
-          weight: fieldConfig?.weight || 1.0,
-        };
-      }
-
-      readyToBulk.push({
-        indexDocument,
-        indexedDocumentPath: element.indexedDocumentPath,
-      });
-    }
-
-    return await this.bulkWithMultiFieldIndexes(readyToBulk);
-  }
-
-  /**
-   * Batch vectorization for multiple fields
-   */
-  private async batchVectorize(fieldsToVectorize: {
-    [fieldName: string]: string;
-  }): Promise<{ [fieldName: string]: number[] }> {
-    try {
-      const fieldNames = Object.keys(fieldsToVectorize);
-      const texts = Object.values(fieldsToVectorize);
-
-      if (texts.length === 0) {
-        return {};
-      }
-
-      // Vectorize all texts in parallel for better performance
-      const vectors = await Promise.all(
-        texts.map((text) => fse_vectorizeText(text, this.wordMaxLength))
       );
 
-      // Map back to field names
-      const result: { [fieldName: string]: number[] } = {};
-      fieldNames.forEach((fieldName, index) => {
-        result[fieldName] = vectors[index];
-      });
+      try {
+        await indexer.bulkIndexes(bulk);
+        processedCount++;
 
-      return result;
-    } catch (error) {
-      console.error("❌ Erreur lors de la vectorisation en batch:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Bulk write for multi-field indexes
-   */
-  protected async bulkWithMultiFieldIndexes(
-    bulkData: {
-      indexDocument: any;
-      indexedDocumentPath: string;
-    }[]
-  ) {
-    const bulk = this.firestoreInstance.bulkWriter();
-    let bulkCount = 0;
-
-    for (const document of bulkData) {
-      if (bulkCount > 500) {
-        await bulk.flush();
-        bulkCount = 0;
+        // Flush periodically
+        if (processedCount % 500 === 0) {
+          await bulk.flush();
+        }
+      } catch (error) {
+        console.error(
+          `❌ Erreur indexation document ${element.indexedDocumentPath}:`,
+          error
+        );
+        // Continue with other documents
       }
-
-      // Clean old indexes for this document
-      await this.cleanOldIndexes(
-        { indexedDocumentPath: document.indexedDocumentPath },
-        bulk,
-        bulkCount
-      );
-
-      // Create new index document
-      bulk.create(
-        this.firestoreInstance.collection(this.config.collection).doc(),
-        document.indexDocument
-      );
-
-      bulkCount++;
     }
 
     await bulk.close();
     console.log(
-      `✅ Bulk multi-field indexing completed for ${bulkData.length} documents`
+      `✅ Bulk multi-field indexing completed for ${processedCount} documents`
     );
     return;
   }
 
   /**
-   * Traditional bulk write (backward compatibility)
+   * Simplified bulk execution for multi-field indexing
    */
-  protected async bulkWithLimitedKeywords(
-    bulkData: {
-      returnedFields: FirestoreSearchEngineIndexesProps["returnedFields"];
-      keywords: number[];
-    }[]
-  ) {
-    const bulk = this.firestoreInstance.bulkWriter();
-    let bulkCount = 0;
+  async execute({
+    documentProps,
+    documentsToIndexes,
+  }: {
+    documentProps: FirestoreSearchEngineIndexesAllProps;
+    documentsToIndexes: any[];
+  }) {
+    // Convert to new multi-field format using indexedKeys
+    const fieldConfigs = documentProps.indexedKeys;
 
-    for (const document of bulkData) {
-      if (bulkCount > 500) {
-        await bulk.flush();
-        bulkCount = 0;
+    // Prepare documents with proper structure
+    const preparedDocuments = documentsToIndexes.map((doc) => {
+      const returnedFields: any = {
+        indexedDocumentPath: doc.indexedDocumentPath,
+      };
+
+      // Add returned keys
+      for (const key of documentProps.returnedKey) {
+        if (doc[key] !== undefined) {
+          returnedFields[key] = doc[key];
+        }
       }
 
-      await this.cleanOldIndexes(document.returnedFields, bulk, bulkCount);
-
-      bulk.create(
-        this.firestoreInstance.collection(this.config.collection).doc(),
-        {
-          vectors: this.fieldValueInstance.vector(document.keywords),
-          ...document.returnedFields,
+      // Add indexed fields
+      for (const fieldName of Object.keys(fieldConfigs)) {
+        if (doc[fieldName] !== undefined) {
+          returnedFields[fieldName] = doc[fieldName];
         }
-      );
+      }
 
-      bulkCount++;
-    }
+      return returnedFields;
+    });
 
-    await bulk.close();
-    return;
+    return await this.executeMultiField({
+      documentsToIndexes: preparedDocuments,
+      fieldConfigs,
+    });
   }
 
   /**
-   * Clean old indexes (backward compatibility maintained)
+   * Clean old indexes for a document
    */
-  protected async cleanOldIndexes(
-    returnedFields: FirestoreSearchEngineIndexesProps["returnedFields"],
-    bulk: BulkWriter,
-    bulkCount: number
-  ) {
-    const { indexedDocumentPath } = returnedFields;
+  private async cleanOldIndexes(
+    indexedDocumentPath: string,
+    bulk: BulkWriter
+  ): Promise<void> {
     const query = await this.firestoreInstance
       .collection(this.config.collection)
       .where("indexedDocumentPath", "==", indexedDocumentPath)
@@ -257,14 +133,8 @@ export class IndexesAll {
 
     if (query.empty) return;
 
-    for (let j = 0; j < query.docs.length; j++) {
-      bulk.delete(query.docs[j].ref);
-      bulkCount++;
-      if (bulkCount > 500) {
-        await bulk.flush();
-        bulkCount = 0;
-      }
+    for (const doc of query.docs) {
+      bulk.delete(doc.ref);
     }
-    return;
   }
 }

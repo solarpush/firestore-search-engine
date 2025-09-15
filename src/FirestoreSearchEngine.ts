@@ -12,7 +12,6 @@ import type {
   FirestoreSearchEngineConfig,
   FirestoreSearchEngineIndexesAllProps,
   FirestoreSearchEngineIndexesProps,
-  FirestoreSearchEngineMultiIndexesProps,
   FirestoreSearchEngineMultiSearchProps,
   FirestoreSearchEngineReturnType,
   FirestoreSearchEngineSearchProps,
@@ -98,140 +97,11 @@ export class FirestoreSearchEngine {
   }
 
   /**
-   * Configures indexes in the configured Firestore collection to enable efficient query processing.
-   * Indexes in Firestore are set up around an index field and a direction.
-   *
-   * Detailed parameters for index configuration include inputField, returnedFields, and wordMaxLength. The inputField is a string specifying the field
-   * to index, returnedFields is an object specifying the fields to return in search results, and wordMaxLength is an optional
-   * parameter that indicates the maximum length of words to be indexed.
-   *
-   * @example
-   * const firestoreSearchEngine = new FirestoreSearchEngine(firestore(), { collection: 'myCollection' });
-   * await firestoreSearchEngine.indexes({ inputField: 'name', returnedFields: { indexedDocumentPath: 'path/to/document', nameOfAdditionalField: 'value' }, wordMaxLength: 10 });
-   *
-   * @param {FirestoreSearchEngineIndexesProps} props - An object specifying the details of the index configuration.
-   * @throws {Error} If an error is encountered during index creation, the error is thrown.
-   *
-   * For more information and usage examples, refer to the Firestore Search Engine [documentation](https://github.com/solarpush/firestore-search-engine).
-   */
-  async indexes(props: FirestoreSearchEngineIndexesProps) {
-    if (typeof props.inputField !== "string" || props.inputField.length === 0) {
-      throw new Error("fieldValue is required and must be a non-empty string.");
-    }
-    return await new Indexes(
-      this.firestoreInstance,
-      this.fieldValueInstance,
-      this.config,
-      props
-    ).execute();
-  }
-
-  /**
-   * Supprime les index d'un champ spécifique dans la collection Firestore configurée.
-   *
-   * @param {FirestoreSearchEngineIndexesProps} props - Objet contenant les détails du champ à désindexer et les champs retournés.
-   * @returns {Promise<any>} Une promesse qui résout le résultat de l'opération de suppression d'index.
-   * @throws {Error} Si le champ d'entrée (inputField) est une chaîne vide ou non définie.
-   *
-   * @example
-   * await firestoreSearchEngine.removeIndexes({
-   *   inputField: 'nom',
-   *   returnedFields: { indexedDocumentPath: 'chemin/vers/document' }
-   * });
-   */
-  async removeIndexes(props: FirestoreSearchEngineIndexesProps) {
-    if (typeof props.inputField !== "string" || props.inputField.length === 0) {
-      throw new Error("fieldValue is required and must be a non-empty string.");
-    }
-    return await new Indexes(
-      this.firestoreInstance,
-      this.fieldValueInstance,
-      this.config,
-      props
-    ).remove();
-  }
-
-  /**
-   * Indexes all documents in the Firestore database.
-   * @param {Object} docProps - The documents to index.
-   * @param {FirestoreSearchEngineIndexesAllProps} docProps.documentProps - The properties of the documents to index.
-   * @param {FirestoreSearchEngineIndexesProps['returnedFields'][]} docProps.documentsToIndexes - The fields of the documents to index.
-   * @return {Promise<any>} A promise that resolves to the result of the indexing operation.
-   * @example
-   *   const docProps = {
-   *    documentProps: {
-   *        fieldsToIndex: ['title', 'content'],
-   *     },
-   *    documentsToIndexes: [
-   *        { documentId: 'doc1', title: 'Hello World', content: 'This is an example document.' },
-   *        { documentId: 'doc2', title: 'Welcome to my site', content: 'This site contains useful information.' },
-   *     ],
-   *  };
-   *
-   *  firestoreSearchEngine.indexesAll(docProps)
-   *  .then((result) => {
-   *    console.log('Indexing completed successfully:', result);
-   *  })
-   *  .catch((error) => {
-   *    console.error('Error indexing documents:', error);
-   *  });
-   *
-   */
-  async indexesAll(docProps: {
-    documentProps: FirestoreSearchEngineIndexesAllProps;
-    documentsToIndexes: FirestoreSearchEngineIndexesProps["returnedFields"][];
-  }) {
-    return await new IndexesAll(
-      this.firestoreInstance,
-      this.fieldValueInstance,
-      this.config
-    ).execute(docProps);
-  }
-
-  /**
-   * Enhanced indexes method that supports both single-field and multi-field indexing
-   * Detects the input type and routes to appropriate indexing strategy
-   */
-  async indexesEnhanced(
-    props:
-      | FirestoreSearchEngineIndexesProps
-      | FirestoreSearchEngineMultiIndexesProps
-  ) {
-    // Check if it's multi-field configuration
-    if ("inputFields" in props && typeof props.inputFields === "object") {
-      // Multi-field indexing
-      return await new Indexes(
-        this.firestoreInstance,
-        this.fieldValueInstance,
-        this.config,
-        props as FirestoreSearchEngineMultiIndexesProps
-      ).indexes();
-    } else {
-      // Single-field indexing (backward compatibility)
-      const singleProps = props as FirestoreSearchEngineIndexesProps;
-      if (
-        typeof singleProps.inputField !== "string" ||
-        singleProps.inputField.length === 0
-      ) {
-        throw new Error(
-          "fieldValue is required and must be a non-empty string."
-        );
-      }
-      return await new Indexes(
-        this.firestoreInstance,
-        this.fieldValueInstance,
-        this.config,
-        singleProps
-      ).execute();
-    }
-  }
-
-  /**
    * Multi-field indexing with batch vectorization
    * Supports multiple fields with weights and fuzzy search configuration
    * Stores vectors as _vector_[fieldName] format
    */
-  async indexesMultiField(props: FirestoreSearchEngineMultiIndexesProps) {
+  async indexes(props: FirestoreSearchEngineIndexesProps) {
     if (!props.inputFields || typeof props.inputFields !== "object") {
       throw new Error(
         "inputFields is required and must be an object with field configurations."
@@ -248,6 +118,65 @@ export class FirestoreSearchEngine {
       this.config,
       props
     ).indexes();
+  }
+
+  /**
+   * Remove multi-field indexes for a document
+   */
+  async removeIndexes(props: FirestoreSearchEngineIndexesProps) {
+    if (!props.inputFields || typeof props.inputFields !== "object") {
+      throw new Error(
+        "inputFields is required and must be an object with field configurations."
+      );
+    }
+
+    return await new Indexes(
+      this.firestoreInstance,
+      this.fieldValueInstance,
+      this.config,
+      props
+    ).remove();
+  }
+
+  /**
+   * Indexes all documents in the Firestore database.
+   * @param {Object} docProps - The documents to index.
+   * @param {FirestoreSearchEngineIndexesAllProps} docProps.documentProps - The properties of the documents to index.
+   * @param {any[]} docProps.documentsToIndexes - The documents to index.
+   * @return {Promise<any>} A promise that resolves to the result of the indexing operation.
+   * @example
+   *   const docProps = {
+   *    documentProps: {
+   *        indexedKeys: {
+   *          'title': { weight: 1.0, fuzzySearch: true },
+   *          'content': { weight: 0.8, fuzzySearch: true }
+   *        },
+   *        returnedKey: ['id', 'timestamp']
+   *     },
+   *    documentsToIndexes: [
+   *        { indexedDocumentPath: 'docs/doc1', title: 'Hello World', content: 'This is an example document.' },
+   *        { indexedDocumentPath: 'docs/doc2', title: 'Welcome to my site', content: 'This site contains useful information.' },
+   *     ],
+   *  };
+   *
+   *  firestoreSearchEngine.indexesAll(docProps)
+   *  .then((result) => {
+   *    console.log('Indexing completed successfully:', result);
+   *  })
+   *  .catch((error) => {
+   *    console.error('Error indexing documents:', error);
+   *  });
+   *
+   */
+  async indexesAll(docProps: {
+    documentProps: FirestoreSearchEngineIndexesAllProps;
+    documentsToIndexes: any[];
+  }) {
+    return await new IndexesAll(
+      this.firestoreInstance,
+      this.fieldValueInstance,
+      this.config
+    ).execute(docProps);
   }
 
   /**
@@ -269,6 +198,7 @@ export class FirestoreSearchEngine {
           fieldValue: props.searchText,
           fuzzySearch: fieldConfig.fuzzySearch ?? true,
           limit: props.limit || 20,
+          distanceThreshold: props.distanceThreshold || 0.8,
           // Use standard 'vectors' field for emulator compatibility
           vectorFieldName: `vectors`,
           // Add field filter for multi-field search
@@ -351,21 +281,6 @@ export class FirestoreSearchEngine {
     return finalResults;
   }
 
-  /**
-   * Bulk multi-field indexing for multiple documents
-   */
-  async indexesAllMultiField(docProps: {
-    fieldConfigs: {
-      [fieldName: string]: { weight?: number; fuzzySearch?: boolean };
-    };
-    documentsToIndexes: any[];
-  }) {
-    return await new IndexesAll(
-      this.firestoreInstance,
-      this.fieldValueInstance,
-      this.config
-    ).executeMultiField(docProps);
-  }
   async expressWrapper(
     app: Application,
     path: string = "/search",
@@ -577,7 +492,7 @@ export class FirestoreSearchEngine {
         if (hasValidFields) {
           try {
             // Utiliser la nouvelle API multi-champs
-            await this.indexesMultiField({
+            await this.indexes({
               inputFields: documentProps.indexedKeys,
               returnedFields: returnedFields as {
                 indexedDocumentPath: string;
@@ -653,13 +568,15 @@ export class FirestoreSearchEngine {
         for (const fieldName of deletedFields) {
           const deletedFieldValue = deleted[fieldName];
           try {
-            await this.removeIndexes({
-              ...props,
-              inputField: deletedFieldValue,
+            // Créer un objet temporaire pour la suppression
+            const tempProps = {
+              inputFields: { [fieldName]: { weight: 1.0, fuzzySearch: true } },
               returnedFields: {
                 indexedDocumentPath: event.data.after.ref.path,
+                [fieldName]: deletedFieldValue,
               },
-            });
+            };
+            await this.removeIndexes(tempProps);
           } catch (error) {
             console.error(
               `❌ Erreur suppression index champ ${fieldName}:`,
@@ -694,7 +611,7 @@ export class FirestoreSearchEngine {
         if (hasValidChanges) {
           try {
             // Utiliser la nouvelle API multi-champs pour réindexer
-            await this.indexesMultiField({
+            await this.indexes({
               inputFields: documentProps.indexedKeys,
               returnedFields: returnedFields as {
                 indexedDocumentPath: string;

@@ -1,18 +1,7 @@
 /**
- * TypeScript type for Firestore search engine indices properties
+ * TypeScript type for multi-field indexing properties (UNIFIED - remplace l'ancien single-field)
  */
-export type FirestoreSearchEngineIndexesProps = {
-    /**
-     * The input field to index (single field only).
-     */
-    inputField: string;
-    /**
-     * The returned fields.
-     */
-    returnedFields: {
-        indexedDocumentPath: string;
-    } & Record<string, any>;
-};
+export type FirestoreSearchEngineIndexesProps = FirestoreSearchEngineMultiIndexesProps;
 /**
  * TypeScript type for multi-field indexing properties
  */
@@ -39,16 +28,10 @@ export type FirestoreSearchEngineMultiIndexesProps = {
         indexedDocumentPath: string;
     } & Record<string, any>;
 };
-export type FirestoreSearchEngineIndexesAllProps = {
-    /**
-     * The key you want to index for search (single key only).
-     */
-    indexedKey: string;
-    /**
-     * An Array of object keys you want to be returned from index collection.
-     */
-    returnedKey: string[];
-};
+/**
+ * TypeScript type for multi-field batch indexing (UNIFIED - remplace l'ancien single-field)
+ */
+export type FirestoreSearchEngineIndexesAllProps = FirestoreSearchEngineMultiIndexesAllProps;
 /**
  * TypeScript type for multi-field batch indexing
  */
