@@ -39,9 +39,23 @@ export interface SearchEngineInstanceConfig
    * Configuration du document à indexer
    */
   documentConfig?: {
-    indexedKey: string;
+    // Support pour l'indexation multi-champs
+    indexedKeys: {
+      [fieldName: string]: {
+        weight?: number;
+        fuzzySearch?: boolean;
+      };
+    };
+
     returnedKeys: string[];
     documentsPath: PathWithSubCollectionsMaxDepth4;
+
+    // Configuration pour le stockage des vecteurs
+    vectorStorage?: {
+      prefix?: string; // Default: "_vector_"
+      batchSize?: number; // Default: 10
+      fields?: string[]; // Champs à vectoriser
+    };
   };
 
   /**
@@ -397,7 +411,16 @@ export class CloudFunctionsManager {
         );
       }
 
-      const { indexedKey, returnedKeys } = instanceConfig.documentConfig;
+      const { indexedKeys, returnedKeys } = instanceConfig.documentConfig;
+
+      // Utiliser le premier champ comme clé principale pour la compatibilité avec les endpoints
+      const firstKey = Object.keys(indexedKeys)[0];
+      if (!firstKey) {
+        throw new Error(
+          `Au moins un champ doit être configuré dans indexedKeys pour "${engineId}"`
+        );
+      }
+      const finalIndexedKey = firstKey;
 
       const documentsSnapshot = await this.config.firestoreInstance
         .collection(collectionPath)
@@ -409,7 +432,7 @@ export class CloudFunctionsManager {
 
       return await engine.indexesAll({
         documentProps: {
-          indexedKey,
+          indexedKey: finalIndexedKey,
           returnedKey: returnedKeys,
         },
         documentsToIndexes: documentsToIndex,
@@ -606,23 +629,32 @@ export class CloudFunctionsManager {
     }
 
     const documentsPath = triggers.documentsPath;
-    const docProps = {
-      indexedKey: documentConfig.indexedKey,
-      returnedKey: documentConfig.returnedKeys,
-    };
 
+    // Support pour les champs multi-index
+    const { indexedKeys, returnedKeys } = documentConfig;
+
+    if (!indexedKeys) {
+      throw new Error(
+        `indexedKeys requis pour l'instance "${instanceConfig.instanceId}"`
+      );
+    }
+
+    const docProps = {
+      indexedKeys: indexedKeys,
+      returnedKey: returnedKeys,
+    };
     const config = {
       wordMaxLength: instanceConfig.wordMaxLength,
       wordMinLength: instanceConfig.wordMinLength,
     };
 
     if (triggers.onCreate) {
-      functions[
-        `searchTrigger${
-          instanceConfig.instanceId.charAt(0).toUpperCase() +
-          instanceConfig.instanceId.slice(1)
-        }OnCreate`
-      ] = searchEngine.onDocumentWriteWrapper(
+      const functionName = `searchTrigger${
+        instanceConfig.instanceId.charAt(0).toUpperCase() +
+        instanceConfig.instanceId.slice(1)
+      }OnCreate`;
+
+      functions[functionName] = searchEngine.onDocumentWriteWrapper(
         this.config.firebaseFunctions.onDocumentCreated,
         docProps,
         documentsPath,
@@ -632,12 +664,12 @@ export class CloudFunctionsManager {
     }
 
     if (triggers.onUpdate) {
-      functions[
-        `searchTrigger${
-          instanceConfig.instanceId.charAt(0).toUpperCase() +
-          instanceConfig.instanceId.slice(1)
-        }OnUpdate`
-      ] = searchEngine.onDocumentUpdateWrapper(
+      const functionName = `searchTrigger${
+        instanceConfig.instanceId.charAt(0).toUpperCase() +
+        instanceConfig.instanceId.slice(1)
+      }OnUpdate`;
+
+      functions[functionName] = searchEngine.onDocumentUpdateWrapper(
         this.config.firebaseFunctions.onDocumentUpdated,
         docProps,
         documentsPath,
@@ -869,20 +901,49 @@ export class CloudFunctionsManager {
             return;
           }
 
-          // Effectuer la recherche
+          // Récupérer la configuration de l'instance
+          const instanceConfig = instancesConfig.find(
+            (config) => config.instanceId === instanceId
+          );
+          if (!instanceConfig?.documentConfig) {
+            res.status(500).json({
+              success: false,
+              message: `Configuration du document non trouvée pour l'instance "${instanceId}"`,
+            });
+            return;
+          }
+
+          // Effectuer la recherche multi-champs
+          const indexedKeys = instanceConfig.documentConfig.indexedKeys;
+          if (!indexedKeys) {
+            res.status(500).json({
+              success: false,
+              message: `Configuration indexedKeys manquante pour l'instance "${instanceId}"`,
+            });
+            return;
+          }
+
+          // Construire la config de recherche à partir de indexedKeys
+          const searchConfig: {
+            [fieldName: string]: { weight?: number; fuzzySearch?: boolean };
+          } = {};
+          for (const [fieldName, fieldConfig] of Object.entries(indexedKeys)) {
+            searchConfig[fieldName] = {
+              weight: (fieldConfig as any).weight || 1.0,
+              fuzzySearch: (fieldConfig as any).fuzzySearch ?? true,
+            };
+          }
+
           const searchParams = {
-            fieldValue: searchValue,
+            searchText: searchValue,
+            searchConfig: searchConfig,
             limit:
               req.method === "GET"
                 ? parseInt(req.query.limit) || 10
                 : req.body?.limit || 10,
-            distanceThreshold:
-              req.method === "GET"
-                ? parseFloat(req.query.distanceThreshold)
-                : req.body?.distanceThreshold,
           };
 
-          const results = await searchEngine.search(searchParams);
+          const results = await searchEngine.searchMultiField(searchParams);
 
           res.status(200).json({
             success: true,

@@ -12,6 +12,8 @@ import type {
   FirestoreSearchEngineConfig,
   FirestoreSearchEngineIndexesAllProps,
   FirestoreSearchEngineIndexesProps,
+  FirestoreSearchEngineMultiIndexesProps,
+  FirestoreSearchEngineMultiSearchProps,
   FirestoreSearchEngineReturnType,
   FirestoreSearchEngineSearchProps,
   PathWithSubCollectionsMaxDepth4,
@@ -185,6 +187,185 @@ export class FirestoreSearchEngine {
       this.config
     ).execute(docProps);
   }
+
+  /**
+   * Enhanced indexes method that supports both single-field and multi-field indexing
+   * Detects the input type and routes to appropriate indexing strategy
+   */
+  async indexesEnhanced(
+    props:
+      | FirestoreSearchEngineIndexesProps
+      | FirestoreSearchEngineMultiIndexesProps
+  ) {
+    // Check if it's multi-field configuration
+    if ("inputFields" in props && typeof props.inputFields === "object") {
+      // Multi-field indexing
+      return await new Indexes(
+        this.firestoreInstance,
+        this.fieldValueInstance,
+        this.config,
+        props as FirestoreSearchEngineMultiIndexesProps
+      ).indexes();
+    } else {
+      // Single-field indexing (backward compatibility)
+      const singleProps = props as FirestoreSearchEngineIndexesProps;
+      if (
+        typeof singleProps.inputField !== "string" ||
+        singleProps.inputField.length === 0
+      ) {
+        throw new Error(
+          "fieldValue is required and must be a non-empty string."
+        );
+      }
+      return await new Indexes(
+        this.firestoreInstance,
+        this.fieldValueInstance,
+        this.config,
+        singleProps
+      ).execute();
+    }
+  }
+
+  /**
+   * Multi-field indexing with batch vectorization
+   * Supports multiple fields with weights and fuzzy search configuration
+   * Stores vectors as _vector_[fieldName] format
+   */
+  async indexesMultiField(props: FirestoreSearchEngineMultiIndexesProps) {
+    if (!props.inputFields || typeof props.inputFields !== "object") {
+      throw new Error(
+        "inputFields is required and must be an object with field configurations."
+      );
+    }
+
+    if (Object.keys(props.inputFields).length === 0) {
+      throw new Error("At least one field must be specified in inputFields.");
+    }
+
+    return await new Indexes(
+      this.firestoreInstance,
+      this.fieldValueInstance,
+      this.config,
+      props
+    ).indexes();
+  }
+
+  /**
+   * Search in multiple fields with weighted results
+   */
+  public async searchMultiField(
+    props: FirestoreSearchEngineMultiSearchProps
+  ): Promise<any[]> {
+    // Convert to traditional search format for each field and combine results
+    const searchResults: any[] = [];
+    const fieldNames = Object.keys(props.searchConfig);
+
+    for (const fieldName of fieldNames) {
+      const fieldConfig = props.searchConfig[fieldName];
+
+      try {
+        // Search in the specific vector field
+        const fieldSearchProps: FirestoreSearchEngineSearchProps = {
+          fieldValue: props.searchText,
+          fuzzySearch: fieldConfig.fuzzySearch ?? true,
+          limit: props.limit || 20,
+          // Use standard 'vectors' field for emulator compatibility
+          vectorFieldName: `vectors`,
+          // Add field filter for multi-field search
+          fieldFilter: fieldName,
+        };
+
+        const fieldResults = await new Search(
+          this.firestoreInstance,
+          this.config,
+          fieldSearchProps
+        ).execute();
+
+        // Apply field weight to results
+        const weightedResults = fieldResults.map((result: any) => ({
+          ...result,
+          _fieldMatch: fieldName,
+          _fieldWeight: fieldConfig.weight || 1.0,
+          _relevanceScore:
+            (result._relevanceScore || 1.0) * (fieldConfig.weight || 1.0),
+        }));
+
+        searchResults.push(...weightedResults);
+      } catch (error) {
+        console.warn(`⚠️ Erreur recherche champ ${fieldName}:`, error);
+        // Continue with other fields
+      }
+    }
+
+    // Combine and sort results by relevance score
+    const combinedResults = this.combineMultiFieldResults(
+      searchResults,
+      props.limit || 20
+    );
+
+    return combinedResults;
+  }
+
+  /**
+   * Combine and deduplicate multi-field search results
+   */
+  private combineMultiFieldResults(results: any[], limit: number): any[] {
+    // Group by indexedDocumentPath to combine scores
+    const groupedResults = new Map<string, any>();
+
+    for (const result of results) {
+      const docPath = result.indexedDocumentPath;
+
+      if (groupedResults.has(docPath)) {
+        const existing = groupedResults.get(docPath);
+        // Combine relevance scores (take max or average)
+        existing._relevanceScore = Math.max(
+          existing._relevanceScore,
+          result._relevanceScore
+        );
+        existing._matchedFields = existing._matchedFields || [];
+        existing._matchedFields.push({
+          field: result._fieldMatch,
+          weight: result._fieldWeight,
+          score: result._relevanceScore,
+        });
+      } else {
+        groupedResults.set(docPath, {
+          ...result,
+          _matchedFields: [
+            {
+              field: result._fieldMatch,
+              weight: result._fieldWeight,
+              score: result._relevanceScore,
+            },
+          ],
+        });
+      }
+    }
+
+    // Convert back to array and sort by relevance
+    const finalResults = Array.from(groupedResults.values())
+      .sort((a, b) => b._relevanceScore - a._relevanceScore)
+      .slice(0, limit);
+
+    return finalResults;
+  }
+
+  /**
+   * Bulk multi-field indexing for multiple documents
+   */
+  async indexesAllMultiField(docProps: {
+    fieldConfigs: {
+      [fieldName: string]: { weight?: number; fuzzySearch?: boolean };
+    };
+    documentsToIndexes: any[];
+  }) {
+    return await new IndexesAll(
+      this.firestoreInstance,
+      this.fieldValueInstance,
+      this.config
+    ).executeMultiField(docProps);
+  }
   async expressWrapper(
     app: Application,
     path: string = "/search",
@@ -326,26 +507,37 @@ export class FirestoreSearchEngine {
   }
 
   /**
-   * Wraps an onDocumentWritten callback function in Firestore.
-   * @param {OnDocumentWrittenCallback} onDocumentWrittenCallBack - The callback function to wrap.
-   * @param {FirestoreSearchEngineDocumentProps} documentProps - The properties of the document to index.
-   * @param {FirestoreSearchEngineDocumentPath} documentsPath - The path of the documents to index.
-   * @param {FirestoreSearchEngineConfigProps} [props={}] - The configuration properties for the search engine.
-   * @param {EventHandlerOptions} [eventHandlerOptions={}] - The options for the event handler.
-   * @return {Function} The wrapped onDocumentWritten callback function.
+   * Wrapper pour trigger de création/écriture de document avec support multi-champs
+   * @param {typeof onDocumentCreated} onDocumentWrittenCallBack - Le callback onDocumentCreated à wrapper
+   * @param {object} documentProps - Les propriétés du document avec indexedKeys et returnedKey
+   * @param {PathWithSubCollectionsMaxDepth4} documentsPath - Le chemin du document à indexer
+   * @param {object} props - Les propriétés de configuration optionnelles
+   * @param {EventHandlerOptions} eventHandlerOptions - Les options du gestionnaire d'événements
+   * @return {Function} La fonction callback wrappée
    *
    * @example
    * export const firestoreWriter = searchEngineUserName.onDocumentWriteWrapper(
-   *    onDocumentCreated, // onDocumentCreated method
-   *    { indexedKey: "test", returnedKey: ["other", "setAt"] }, // the key you want to index and return in the search result
-   *    "test/{testId}", //documentPath or subCollectionDocumentPath  && 5 recursive level only
-   *    { wordMaxLength: 25 }, //optional config object set undefined, to default accept wordMinLength: 3, wordMaxLength: 50 for indexing control and reduce indexing size
-   *    { region: "europe-west3" } //EventHandlerOptions optional
-   *  );
+   *   onDocumentCreated,
+   *   {
+   *     indexedKeys: {
+   *       "name": { weight: 1.0, fuzzySearch: true },
+   *       "description": { weight: 0.5, fuzzySearch: false }
+   *     },
+   *     returnedKey: ["id", "setAt"]
+   *   },
+   *   "users/{userId}",
+   *   { wordMaxLength: 25 },
+   *   { region: "europe-west3" }
+   * );
    */
   onDocumentWriteWrapper(
     onDocumentWrittenCallBack: typeof onDocumentCreated,
-    documentProps: { indexedKey: string; returnedKey: string[] },
+    documentProps: {
+      indexedKeys: {
+        [fieldName: string]: { weight?: number; fuzzySearch?: boolean };
+      };
+      returnedKey: string[];
+    },
     documentsPath: PathWithSubCollectionsMaxDepth4,
     props: Pick<
       FirestoreSearchEngineConfig,
@@ -359,29 +551,40 @@ export class FirestoreSearchEngine {
         const data = event.data?.data();
         if (!event.data || !data) return;
 
-        const updatedFieldValue = data[documentProps.indexedKey];
-        const returnedFields: Record<string, any> = {};
+        // Construire les champs retournés
+        const returnedFields: Record<string, any> = {
+          indexedDocumentPath: event.data.ref.path,
+        };
+
         for (const key of documentProps.returnedKey) {
-          if (data[key] || data[key] === 0) {
+          if (data[key] !== undefined) {
             returnedFields[key] = data[key];
           }
         }
-        if (
-          updatedFieldValue &&
-          typeof updatedFieldValue === "string" &&
-          updatedFieldValue.length > (props.wordMinLength ?? 3)
-        ) {
+
+        // Vérifier si au moins un champ à indexer existe et est valide
+        const hasValidFields = Object.keys(documentProps.indexedKeys).some(
+          (fieldName) => {
+            const fieldValue = data[fieldName];
+            return (
+              fieldValue &&
+              typeof fieldValue === "string" &&
+              fieldValue.length > (props.wordMinLength ?? 3)
+            );
+          }
+        );
+
+        if (hasValidFields) {
           try {
-            await this.indexes({
-              ...props,
-              inputField: updatedFieldValue,
-              returnedFields: {
-                indexedDocumentPath: event.data.ref.path,
-                ...returnedFields,
-              },
+            // Utiliser la nouvelle API multi-champs
+            await this.indexesMultiField({
+              inputFields: documentProps.indexedKeys,
+              returnedFields: returnedFields as {
+                indexedDocumentPath: string;
+              } & Record<string, any>,
             });
           } catch (error) {
-            console.error(error);
+            console.error("❌ Erreur indexation multi-champs:", error);
             return;
           }
         }
@@ -389,27 +592,39 @@ export class FirestoreSearchEngine {
       }
     );
   }
+
   /**
-   * Wraps an onDocumentUpdated callback function in Firestore.
-   * @param {OnDocumentUpdatedCallback} instanceOfOnDocumentUpdated - The callback function to wrap.
-   * @param {FirestoreSearchEngineDocumentProps} documentProps - The properties of the document to index.
-   * @param {FirestoreSearchEngineDocumentPath} documentsPath - The path of the document to index.
-   * @param {FirestoreSearchEngineConfigProps} [props={}] - The configuration properties for the search engine.
-   * @param {EventHandlerOptions} [eventHandlerOptions={}] - The options for the event handler.
-   * @return {Function} The wrapped onDocumentUpdated callback function.
+   * Wrapper pour trigger de mise à jour de document avec support multi-champs
+   * @param {typeof onDocumentUpdated} instanceOfOnDocumentUpdated - Le callback onDocumentUpdated à wrapper
+   * @param {object} documentProps - Les propriétés du document avec indexedKeys et returnedKey
+   * @param {PathWithSubCollectionsMaxDepth4} documentsPath - Le chemin du document à indexer
+   * @param {object} props - Les propriétés de configuration optionnelles
+   * @param {EventHandlerOptions} eventHandlerOptions - Les options du gestionnaire d'événements
+   * @return {Function} La fonction callback wrappée
    *
    * @example
-   *export const firestoreUpdated = searchEngineUserName.onDocumentUpdateWrapper(
-   * onDocumentUpdated, // onDocumentUpdated method
-   *  { indexedKey: "test", returnedKey: ["other", "setAt"] }, // the key you want to index and return in the search result
-   *  "test/{testId}", //documentPath or subCollectionDocumentPath  && 5 recursive level only
-   *  { wordMinLength: 3 }, //optional config object set {} to default accept wordMinLength: 3, wordMaxLength: 50 for indexing control
-   *  { region: "europe-west3" } //EventHandlerOptions optional
-   *);
+   * export const firestoreUpdated = searchEngineUserName.onDocumentUpdateWrapper(
+   *   onDocumentUpdated,
+   *   {
+   *     indexedKeys: {
+   *       "name": { weight: 1.0, fuzzySearch: true },
+   *       "description": { weight: 0.5, fuzzySearch: false }
+   *     },
+   *     returnedKey: ["id", "setAt"]
+   *   },
+   *   "users/{userId}",
+   *   { wordMinLength: 3 },
+   *   { region: "europe-west3" }
+   * );
    */
   onDocumentUpdateWrapper(
     instanceOfOnDocumentUpdated: typeof onDocumentUpdated,
-    documentProps: { indexedKey: string; returnedKey: string[] },
+    documentProps: {
+      indexedKeys: {
+        [fieldName: string]: { weight?: number; fuzzySearch?: boolean };
+      };
+      returnedKey: string[];
+    },
     documentsPath: PathWithSubCollectionsMaxDepth4,
     props: Pick<
       FirestoreSearchEngineConfig,
@@ -421,13 +636,22 @@ export class FirestoreSearchEngine {
       { ...eventHandlerOptions, document: documentsPath },
       async (event) => {
         if (!event.data) return;
+
         const { changes, after, deleted } = deepDiff(
           event.data.before.data() || {},
           event.data.after.data() || {}
         );
-        const updatedFieldValue = changes[documentProps.indexedKey];
-        const deletedFieldValue = deleted[documentProps.indexedKey];
-        if (deletedFieldValue && typeof deletedFieldValue === "string") {
+
+        // Gérer les suppressions pour chaque champ indexé
+        const deletedFields = Object.keys(documentProps.indexedKeys).filter(
+          (fieldName) => {
+            const deletedValue = deleted[fieldName];
+            return deletedValue && typeof deletedValue === "string";
+          }
+        );
+
+        for (const fieldName of deletedFields) {
+          const deletedFieldValue = deleted[fieldName];
           try {
             await this.removeIndexes({
               ...props,
@@ -437,32 +661,47 @@ export class FirestoreSearchEngine {
               },
             });
           } catch (error) {
-            console.error(error);
-            return;
+            console.error(
+              `❌ Erreur suppression index champ ${fieldName}:`,
+              error
+            );
           }
         }
-        const returnedFields: Record<string, any> = {};
+
+        // Construire les champs retournés
+        const returnedFields: Record<string, any> = {
+          indexedDocumentPath: event.data.after.ref.path,
+        };
+
         for (const key of documentProps.returnedKey) {
-          if (after[key] || after[key] === 0) {
+          if (after[key] !== undefined) {
             returnedFields[key] = after[key];
           }
         }
-        if (
-          updatedFieldValue &&
-          typeof updatedFieldValue === "string" &&
-          updatedFieldValue.length > (props.wordMinLength ?? 3)
-        ) {
+
+        // Vérifier si au moins un champ modifié est valide pour l'indexation
+        const hasValidChanges = Object.keys(documentProps.indexedKeys).some(
+          (fieldName) => {
+            const updatedValue = changes[fieldName];
+            return (
+              updatedValue &&
+              typeof updatedValue === "string" &&
+              updatedValue.length > (props.wordMinLength ?? 3)
+            );
+          }
+        );
+
+        if (hasValidChanges) {
           try {
-            await this.indexes({
-              ...props,
-              inputField: updatedFieldValue,
-              returnedFields: {
-                indexedDocumentPath: event.data.after.ref.path,
-                ...returnedFields,
-              },
+            // Utiliser la nouvelle API multi-champs pour réindexer
+            await this.indexesMultiField({
+              inputFields: documentProps.indexedKeys,
+              returnedFields: returnedFields as {
+                indexedDocumentPath: string;
+              } & Record<string, any>,
             });
           } catch (error) {
-            console.error(error);
+            console.error("❌ Erreur réindexation multi-champs:", error);
             return;
           }
         }
@@ -470,6 +709,7 @@ export class FirestoreSearchEngine {
       }
     );
   }
+
   /**
    * Wraps an onDocumentDeleted callback function in Firestore.
    * @param {OnDocumentDeletedCallback} instanceOfOnDocumentDeleted - The callback function to wrap.

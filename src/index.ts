@@ -3,10 +3,9 @@
  */
 export type FirestoreSearchEngineIndexesProps = {
   /**
-   * The input field(s) to index.
-   * Can be a single field name or multiple fields for batch indexing.
+   * The input field to index (single field only).
    */
-  inputField: string | string[] | { [fieldName: string]: { weight?: number } };
+  inputField: string;
   /**
    * The returned fields.
    */
@@ -39,10 +38,9 @@ export type FirestoreSearchEngineMultiIndexesProps = {
 };
 export type FirestoreSearchEngineIndexesAllProps = {
   /**
-   * The key(s) you want to index for search.
-   * Can be a single key or multiple keys for batch indexing.
+   * The key you want to index for search (single key only).
    */
-  indexedKey: string | string[] | { [fieldName: string]: { weight?: number } };
+  indexedKey: string;
   /**
    * An Array of object keys you want to be returned from index collection.
    */
@@ -94,6 +92,18 @@ export type FirestoreSearchEngineSearchProps = {
    * Weights for different fields when searching across multiple fields
    */
   fieldWeights?: { [fieldName: string]: number };
+  /**
+   * Whether to enable fuzzy search
+   */
+  fuzzySearch?: boolean;
+  /**
+   * Custom vector field name to search in (for multi-field support)
+   */
+  vectorFieldName?: string;
+  /**
+   * Filter by field name in multi-field indexes
+   */
+  fieldFilter?: string;
 };
 
 /**
@@ -101,16 +111,22 @@ export type FirestoreSearchEngineSearchProps = {
  */
 export type FirestoreSearchEngineMultiSearchProps = {
   /**
-   * The search query
+   * The search text/query
    */
-  query: string;
+  searchText: string;
   /**
-   * Fields to search in with their weights
+   * Configuration for each field to search
    */
-  searchFields?: {
+  searchConfig: {
     [fieldName: string]: {
+      /**
+       * Weight for this field in search relevance
+       */
       weight?: number;
-      boost?: number;
+      /**
+       * Whether to enable fuzzy search for this field
+       */
+      fuzzySearch?: boolean;
     };
   };
   /**
@@ -118,13 +134,9 @@ export type FirestoreSearchEngineMultiSearchProps = {
    */
   limit?: number;
   /**
-   * The accepted distance threshold for each field
+   * The accepted distance threshold for vector similarity
    */
   distanceThreshold?: number;
-  /**
-   * Global distance thresholds per field
-   */
-  fieldThresholds?: { [fieldName: string]: number };
 };
 
 /**

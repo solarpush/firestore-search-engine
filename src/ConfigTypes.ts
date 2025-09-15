@@ -5,6 +5,7 @@ import type {
   SearchEngineInstanceConfig,
   UnifiedEndpointConfig,
 } from "./CloudFunctionsManager";
+import type { PathWithSubCollectionsMaxDepth4 } from "./index";
 
 /**
  * Middleware d'authentification pour Express
@@ -110,10 +111,34 @@ export interface AdvancedSearchEngineInstanceConfig
       path?: string;
       authCallback?: AuthCallback;
       middleware?: AuthMiddleware;
+
+      // Configuration pour la recherche multi-champs
+      searchConfig?: {
+        defaultFields?: string[];
+        allowedFields?: string[];
+        fieldWeights?: { [fieldName: string]: number };
+      };
     };
     callable?: {
       enabled: boolean;
       authCallback?: AuthCallback;
+    };
+  };
+
+  /**
+   * Configuration des triggers avec support multi-champs
+   */
+  triggers?: {
+    onCreate?: boolean;
+    onUpdate?: boolean;
+    onDelete?: boolean;
+    documentsPath?: PathWithSubCollectionsMaxDepth4;
+
+    // Configuration pour la re-vectorisation automatique
+    reindexConfig?: {
+      autoReindex?: boolean;
+      batchReindex?: boolean;
+      fieldsToWatch?: string[];
     };
   };
 }

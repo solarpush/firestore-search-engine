@@ -4,7 +4,7 @@ import { firestore } from "firebase-admin";
 import { CallableRequest } from "firebase-functions/https";
 import type { EventHandlerOptions } from "firebase-functions/options";
 import type { onDocumentCreated, onDocumentDeleted, onDocumentUpdated } from "firebase-functions/v2/firestore";
-import type { FirestoreSearchEngineConfig, FirestoreSearchEngineIndexesAllProps, FirestoreSearchEngineIndexesProps, FirestoreSearchEngineReturnType, FirestoreSearchEngineSearchProps, PathWithSubCollectionsMaxDepth4 } from ".";
+import type { FirestoreSearchEngineConfig, FirestoreSearchEngineIndexesAllProps, FirestoreSearchEngineIndexesProps, FirestoreSearchEngineMultiIndexesProps, FirestoreSearchEngineMultiSearchProps, FirestoreSearchEngineReturnType, FirestoreSearchEngineSearchProps, PathWithSubCollectionsMaxDepth4 } from ".";
 /**
  * Configures the Firestore instance and throws an error if a necessary
  * condition (collection name being a non-empty string) is not satisfied.
@@ -62,7 +62,7 @@ export declare class FirestoreSearchEngine {
      *
      * For more information and usage examples, refer to the Firestore Search Engine [documentation](https://github.com/solarpush/firestore-search-engine).
      */
-    indexes(props: FirestoreSearchEngineIndexesProps): Promise<void>;
+    indexes(props: FirestoreSearchEngineIndexesProps): Promise<any>;
     /**
      * Supprime les index d'un champ spécifique dans la collection Firestore configurée.
      *
@@ -107,6 +107,37 @@ export declare class FirestoreSearchEngine {
         documentProps: FirestoreSearchEngineIndexesAllProps;
         documentsToIndexes: FirestoreSearchEngineIndexesProps["returnedFields"][];
     }): Promise<void>;
+    /**
+     * Enhanced indexes method that supports both single-field and multi-field indexing
+     * Detects the input type and routes to appropriate indexing strategy
+     */
+    indexesEnhanced(props: FirestoreSearchEngineIndexesProps | FirestoreSearchEngineMultiIndexesProps): Promise<any>;
+    /**
+     * Multi-field indexing with batch vectorization
+     * Supports multiple fields with weights and fuzzy search configuration
+     * Stores vectors as _vector_[fieldName] format
+     */
+    indexesMultiField(props: FirestoreSearchEngineMultiIndexesProps): Promise<void>;
+    /**
+     * Search in multiple fields with weighted results
+     */
+    searchMultiField(props: FirestoreSearchEngineMultiSearchProps): Promise<any[]>;
+    /**
+     * Combine and deduplicate multi-field search results
+     */
+    private combineMultiFieldResults;
+    /**
+     * Bulk multi-field indexing for multiple documents
+     */
+    indexesAllMultiField(docProps: {
+        fieldConfigs: {
+            [fieldName: string]: {
+                weight?: number;
+                fuzzySearch?: boolean;
+            };
+        };
+        documentsToIndexes: any[];
+    }): Promise<void>;
     expressWrapper(app: Application, path?: string, props?: Omit<FirestoreSearchEngineSearchProps, "fieldValue">): Promise<Application>;
     /**
      * Wraps an Express application and adds a route for performing a search.
@@ -143,25 +174,36 @@ export declare class FirestoreSearchEngine {
      */
     onCallWrapped(authCallBack: (auth: CallableRequest["auth"]) => Promise<boolean> | boolean, props?: Omit<FirestoreSearchEngineSearchProps, "fieldValue">): (data: CallableRequest) => Promise<FirestoreSearchEngineReturnType>;
     /**
-     * Wraps an onDocumentWritten callback function in Firestore.
-     * @param {OnDocumentWrittenCallback} onDocumentWrittenCallBack - The callback function to wrap.
-     * @param {FirestoreSearchEngineDocumentProps} documentProps - The properties of the document to index.
-     * @param {FirestoreSearchEngineDocumentPath} documentsPath - The path of the documents to index.
-     * @param {FirestoreSearchEngineConfigProps} [props={}] - The configuration properties for the search engine.
-     * @param {EventHandlerOptions} [eventHandlerOptions={}] - The options for the event handler.
-     * @return {Function} The wrapped onDocumentWritten callback function.
+     * Wrapper pour trigger de création/écriture de document avec support multi-champs
+     * @param {typeof onDocumentCreated} onDocumentWrittenCallBack - Le callback onDocumentCreated à wrapper
+     * @param {object} documentProps - Les propriétés du document avec indexedKeys et returnedKey
+     * @param {PathWithSubCollectionsMaxDepth4} documentsPath - Le chemin du document à indexer
+     * @param {object} props - Les propriétés de configuration optionnelles
+     * @param {EventHandlerOptions} eventHandlerOptions - Les options du gestionnaire d'événements
+     * @return {Function} La fonction callback wrappée
      *
      * @example
      * export const firestoreWriter = searchEngineUserName.onDocumentWriteWrapper(
-     *    onDocumentCreated, // onDocumentCreated method
-     *    { indexedKey: "test", returnedKey: ["other", "setAt"] }, // the key you want to index and return in the search result
-     *    "test/{testId}", //documentPath or subCollectionDocumentPath  && 5 recursive level only
-     *    { wordMaxLength: 25 }, //optional config object set undefined, to default accept wordMinLength: 3, wordMaxLength: 50 for indexing control and reduce indexing size
-     *    { region: "europe-west3" } //EventHandlerOptions optional
-     *  );
+     *   onDocumentCreated,
+     *   {
+     *     indexedKeys: {
+     *       "name": { weight: 1.0, fuzzySearch: true },
+     *       "description": { weight: 0.5, fuzzySearch: false }
+     *     },
+     *     returnedKey: ["id", "setAt"]
+     *   },
+     *   "users/{userId}",
+     *   { wordMaxLength: 25 },
+     *   { region: "europe-west3" }
+     * );
      */
     onDocumentWriteWrapper(onDocumentWrittenCallBack: typeof onDocumentCreated, documentProps: {
-        indexedKey: string;
+        indexedKeys: {
+            [fieldName: string]: {
+                weight?: number;
+                fuzzySearch?: boolean;
+            };
+        };
         returnedKey: string[];
     }, documentsPath: PathWithSubCollectionsMaxDepth4, props?: Pick<FirestoreSearchEngineConfig, "wordMaxLength" | "wordMinLength">, eventHandlerOptions?: EventHandlerOptions): import("firebase-functions/core").CloudFunction<import("firebase-functions/firestore").FirestoreEvent<import("firebase-functions/firestore").QueryDocumentSnapshot | undefined, {
         [x: string]: string;
@@ -173,25 +215,36 @@ export declare class FirestoreSearchEngine {
         [x: string]: string;
     }>>;
     /**
-     * Wraps an onDocumentUpdated callback function in Firestore.
-     * @param {OnDocumentUpdatedCallback} instanceOfOnDocumentUpdated - The callback function to wrap.
-     * @param {FirestoreSearchEngineDocumentProps} documentProps - The properties of the document to index.
-     * @param {FirestoreSearchEngineDocumentPath} documentsPath - The path of the document to index.
-     * @param {FirestoreSearchEngineConfigProps} [props={}] - The configuration properties for the search engine.
-     * @param {EventHandlerOptions} [eventHandlerOptions={}] - The options for the event handler.
-     * @return {Function} The wrapped onDocumentUpdated callback function.
+     * Wrapper pour trigger de mise à jour de document avec support multi-champs
+     * @param {typeof onDocumentUpdated} instanceOfOnDocumentUpdated - Le callback onDocumentUpdated à wrapper
+     * @param {object} documentProps - Les propriétés du document avec indexedKeys et returnedKey
+     * @param {PathWithSubCollectionsMaxDepth4} documentsPath - Le chemin du document à indexer
+     * @param {object} props - Les propriétés de configuration optionnelles
+     * @param {EventHandlerOptions} eventHandlerOptions - Les options du gestionnaire d'événements
+     * @return {Function} La fonction callback wrappée
      *
      * @example
-     *export const firestoreUpdated = searchEngineUserName.onDocumentUpdateWrapper(
-     * onDocumentUpdated, // onDocumentUpdated method
-     *  { indexedKey: "test", returnedKey: ["other", "setAt"] }, // the key you want to index and return in the search result
-     *  "test/{testId}", //documentPath or subCollectionDocumentPath  && 5 recursive level only
-     *  { wordMinLength: 3 }, //optional config object set {} to default accept wordMinLength: 3, wordMaxLength: 50 for indexing control
-     *  { region: "europe-west3" } //EventHandlerOptions optional
-     *);
+     * export const firestoreUpdated = searchEngineUserName.onDocumentUpdateWrapper(
+     *   onDocumentUpdated,
+     *   {
+     *     indexedKeys: {
+     *       "name": { weight: 1.0, fuzzySearch: true },
+     *       "description": { weight: 0.5, fuzzySearch: false }
+     *     },
+     *     returnedKey: ["id", "setAt"]
+     *   },
+     *   "users/{userId}",
+     *   { wordMinLength: 3 },
+     *   { region: "europe-west3" }
+     * );
      */
     onDocumentUpdateWrapper(instanceOfOnDocumentUpdated: typeof onDocumentUpdated, documentProps: {
-        indexedKey: string;
+        indexedKeys: {
+            [fieldName: string]: {
+                weight?: number;
+                fuzzySearch?: boolean;
+            };
+        };
         returnedKey: string[];
     }, documentsPath: PathWithSubCollectionsMaxDepth4, props?: Pick<FirestoreSearchEngineConfig, "wordMaxLength" | "wordMinLength">, eventHandlerOptions?: EventHandlerOptions): import("firebase-functions/core").CloudFunction<import("firebase-functions/firestore").FirestoreEvent<import("firebase-functions/firestore").Change<import("firebase-functions/firestore").QueryDocumentSnapshot> | undefined, {
         [x: string]: string;

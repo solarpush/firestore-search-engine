@@ -1,20 +1,10 @@
 import type { BulkWriter } from "@google-cloud/firestore";
 import { firestore } from "firebase-admin";
-import type { FirestoreSearchEngineConfig, FirestoreSearchEngineIndexesProps } from "..";
+import type { FirestoreSearchEngineConfig, FirestoreSearchEngineIndexesProps, FirestoreSearchEngineMultiIndexesProps } from "..";
 /**
- * The `BulkWriter` and `Firestore` objects are imported from the
- * '@google-cloud/firestore' package. These objects are used for batched writes
- * and cloud-based NoSQL databases respectively.
- *
- * Also, the `FirestoreSearchEngineConfig` and `FirestoreSearchEngineIndexesProps` objects
- * are imported from the parent directory. These are mostly likely used to configure
- * your Firestore Search engine. This can include settings such as security, indexes, etc.
- *
- * The function `generateTypos` from "../shared/generateTypos" is also imported.
- * It's used to programmatically generate various combinations of typo errors
- * (misspellings) based on a given string.
- *
- * For context-specific documentation, please refer to the respective modules' docstring or documentation.
+ * Enhanced Indexes class that supports both single-field and multi-field indexing
+ * Maintains backward compatibility with existing single-field implementation
+ * Adds new multi-field batch vectorization capabilities
  */
 export declare class Indexes {
     private readonly firestoreInstance;
@@ -23,9 +13,38 @@ export declare class Indexes {
     private readonly props;
     wordMinLength: number;
     wordMaxLength: number;
-    constructor(firestoreInstance: firestore.Firestore, fieldValueInstance: typeof firestore.FieldValue, config: FirestoreSearchEngineConfig, props: FirestoreSearchEngineIndexesProps);
-    execute(): Promise<void>;
+    private multiIndexer?;
+    constructor(firestoreInstance: firestore.Firestore, fieldValueInstance: typeof firestore.FieldValue, config: FirestoreSearchEngineConfig, props: FirestoreSearchEngineIndexesProps | FirestoreSearchEngineMultiIndexesProps);
+    /**
+     * Main execution method - routes to appropriate indexing strategy
+     */
+    execute(): Promise<any>;
+    /**
+     * Remove indexes
+     */
     remove(): Promise<void>;
-    protected saveWithLimitedKeywords(returnedFields: FirestoreSearchEngineIndexesProps["returnedFields"], keywords: number[]): Promise<void>;
+    /**
+     * Check if configuration is for multi-field indexing
+     */
+    private isMultiFieldConfig;
+    /**
+     * Traditional single-field execution (backward compatibility)
+     */
+    private executeSingleField;
+    /**
+     * Save with limited keywords (backward compatibility)
+     */
+    protected saveWithLimitedKeywords(returnedFields: FirestoreSearchEngineIndexesProps["returnedFields"], keywords: number[]): Promise<any>;
+    /**
+     * Clean old indexes (backward compatibility)
+     */
     protected cleanOldIndexes(returnedFields: FirestoreSearchEngineIndexesProps["returnedFields"], bulk: BulkWriter): Promise<void>;
+    /**
+     * New smart indexing method that detects configuration type
+     */
+    indexes(): Promise<void>;
+    /**
+     * New smart bulk indexing method
+     */
+    bulkIndexes(bulkWriter: BulkWriter): Promise<void>;
 }
